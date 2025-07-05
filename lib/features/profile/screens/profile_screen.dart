@@ -1,26 +1,177 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfileController extends GetxController {
-  // User data - replace with actual user data from your auth system
-  String userName = 'Chris Johnson';
-  String userEmail = 'chris.johnson@email.com';
-  String userPhone = '+234 801 234 5678';
-  String userAvatar = ''; // Add avatar URL if available
+  // Observable user data
+  var userName = 'Chris Johnson'.obs;
+  var userEmail = 'chris.johnson@email.com'.obs;
+  var userPhone = '+234 801 234 5678'.obs;
+  var userAvatar = ''.obs;
+  var selectedImagePath = ''.obs;
   
   // Account verification status
-  bool isEmailVerified = true;
-  bool isPhoneVerified = false;
-  bool isKycVerified = false;
+  var isEmailVerified = true.obs;
+  var isPhoneVerified = false.obs;
+  var isKycVerified = false.obs;
   
-  void logout() {
-    // Add logout logic here
-    Get.offAllNamed('/login');
+  // Edit mode
+  var isEditMode = false.obs;
+  var isLoading = false.obs;
+  
+  // Text controllers for editing
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  
+  @override
+  void onInit() {
+    super.onInit();
+    // Initialize controllers with current values
+    nameController.text = userName.value;
+    emailController.text = userEmail.value;
+    phoneController.text = userPhone.value;
   }
   
-  void editProfile() {
-    Get.snackbar('Edit Profile', 'Edit profile feature coming soon');
+  @override
+  void onClose() {
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    super.onClose();
+  }
+  
+  void toggleEditMode() {
+    isEditMode.value = !isEditMode.value;
+    if (!isEditMode.value) {
+      // Reset controllers if canceling edit
+      nameController.text = userName.value;
+      emailController.text = userEmail.value;
+      phoneController.text = userPhone.value;
+    }
+  }
+  
+  Future<void> saveProfile() async {
+    isLoading.value = true;
+    
+    // Simulate API call
+    await Future.delayed(Duration(seconds: 2));
+    
+    // Update user data
+    userName.value = nameController.text;
+    userEmail.value = emailController.text;
+    userPhone.value = phoneController.text;
+    
+    isEditMode.value = false;
+    isLoading.value = false;
+    
+    Get.snackbar(
+      'Success',
+      'Profile updated successfully',
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+    );
+  }
+  
+  Future<void> changeProfilePicture() async {
+    final ImagePicker picker = ImagePicker();
+    
+    // Show options dialog
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Change Profile Picture',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildImageOption(
+                  'Camera',
+                  Icons.camera_alt,
+                  () async {
+                    Get.back();
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.camera,
+                      maxWidth: 512,
+                      maxHeight: 512,
+                      imageQuality: 80,
+                    );
+                    if (image != null) {
+                      selectedImagePath.value = image.path;
+                    }
+                  },
+                ),
+                _buildImageOption(
+                  'Gallery',
+                  Icons.photo_library,
+                  () async {
+                    Get.back();
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                      maxWidth: 512,
+                      maxHeight: 512,
+                      imageQuality: 80,
+                    );
+                    if (image != null) {
+                      selectedImagePath.value = image.path;
+                    }
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildImageOption(String title, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.green, size: 30),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void logout() {
+    Get.offAllNamed('/login');
   }
   
   void changePassword() {
@@ -43,251 +194,400 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF1A1A1A),
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Get.back(),
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+      body: CustomScrollView(
+        slivers: [
+          // Enhanced App Bar with gradient
+          Obx(() => SliverAppBar(
+            expandedHeight: controller.isEditMode.value ? 380.0 : 280.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.green.shade600,
+                      Colors.green.shade400,
+                      Colors.teal.shade400,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                ),
+                child: _buildProfileHeader(),
+              ),
+            ),
+            leading: IconButton(
+              onPressed: () => Get.back(),
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.arrow_back, color: Colors.white),
+              ),
+            ),
+            actions: [
+              Obx(() => IconButton(
+                onPressed: controller.isEditMode.value 
+                    ? controller.toggleEditMode 
+                    : controller.toggleEditMode,
+                icon: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    controller.isEditMode.value ? Icons.close : Icons.edit,
+                    color: Colors.white,
+                  ),
+                ),
+              )),
+            ],
+          )),
+          
+          // Content
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildAccountStatusSection(),
+                  SizedBox(height: 30),
+                  _buildAccountSettingsSection(),
+                  SizedBox(height: 30),
+                  _buildLogoutButton(),
+                  SizedBox(height: 30),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildProfileHeader() {
+    return Obx(() => Padding(
+      padding: EdgeInsets.only(top: 60, bottom: 16), // Further reduced padding
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Use minimum space needed
+        children: [
+          // Enhanced Profile Avatar with edit capability
+          Stack(
+            children: [
+              Container(
+                width: 100, // Slightly reduced size
+                height: 100, // Slightly reduced size
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Colors.white.withOpacity(0.3), Colors.white.withOpacity(0.1)],
+                  ),
+                  border: Border.all(color: Colors.white, width: 3), // Reduced border
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 12, // Slightly reduced
+                      offset: Offset(0, 6), // Slightly reduced
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: controller.selectedImagePath.value.isNotEmpty
+                      ? Image.file(
+                          File(controller.selectedImagePath.value),
+                          fit: BoxFit.cover,
+                        )
+                      : controller.userAvatar.value.isNotEmpty
+                          ? Image.network(
+                              controller.userAvatar.value,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.green.shade300, Colors.teal.shade300],
+                                ),
+                              ),
+                              child: Icon(
+                                MaterialCommunityIcons.account,
+                                size: 50, // Reduced icon size
+                                color: Colors.white,
+                              ),
+                            ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: controller.changeProfilePicture,
+                  child: Container(
+                    width: 32, // Slightly smaller
+                    height: 32, // Slightly smaller
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 6, // Reduced
+                          offset: Offset(0, 3), // Reduced
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 16, // Reduced icon size
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16), // Reduced spacing
+          
+          // Editable user information
+          if (controller.isEditMode.value) ...[
+            _buildEditableField('Name', controller.nameController),
+            SizedBox(height: 6), // Further reduced spacing
+            _buildEditableField('Email', controller.emailController),
+            SizedBox(height: 6), // Further reduced spacing
+            _buildEditableField('Phone', controller.phoneController),
+            SizedBox(height: 12), // Further reduced spacing
+            _buildSaveButton(),
+          ] else ...[
+            // Display mode
+            Text(
+              controller.userName.value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24, // Slightly reduced
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 6), // Reduced spacing
+            Text(
+              controller.userEmail.value,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 15, // Slightly reduced
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 3), // Reduced spacing
+            Text(
+              controller.userPhone.value,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 13, // Slightly reduced
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    ));
+  }
+  
+  Widget _buildEditableField(String label, TextEditingController textController) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: textController,
+        style: TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+          ),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white, width: 2),
+          ),
         ),
-        title: Text(
-          'Profile',
+      ),
+    );
+  }
+  
+  Widget _buildSaveButton() {
+    return Obx(() => Container(
+      margin: EdgeInsets.symmetric(horizontal: 20),
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: controller.isLoading.value ? null : controller.saveProfile,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.green,
+          padding: EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
+          ),
+          elevation: 8,
+        ),
+        child: controller.isLoading.value
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+              )
+            : Text(
+                'Save Changes',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+      ),
+    ));
+  }
+  
+  Widget _buildAccountStatusSection() {
+    return Obx(() => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Account Status',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: controller.editProfile,
-            icon: Icon(Icons.edit, color: Colors.white),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile Header
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 30),
-                child: Column(
-                  children: [
-                    // Profile Avatar
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.2),
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: controller.userAvatar.isEmpty
-                          ? Icon(
-                              MaterialCommunityIcons.account,
-                              size: 50,
-                              color: Colors.white,
-                            )
-                          : ClipOval(
-                              child: Image.network(
-                                controller.userAvatar,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                    ),
-                    SizedBox(height: 16),
-                    // User Name
-                    Text(
-                      controller.userName,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    // User Email
-                    Text(
-                      controller.userEmail,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            SizedBox(height: 20),
-            
-            // Account Status Section
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Account Status',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Verification Status Cards
-                  _buildStatusCard(
-                    'Email Verification',
-                    controller.isEmailVerified ? 'Verified' : 'Not Verified',
-                    controller.isEmailVerified ? Colors.green : Colors.orange,
-                    MaterialCommunityIcons.email_check,
-                  ),
-                  SizedBox(height: 12),
-                  _buildStatusCard(
-                    'Phone Verification',
-                    controller.isPhoneVerified ? 'Verified' : 'Not Verified',
-                    controller.isPhoneVerified ? Colors.green : Colors.orange,
-                    MaterialCommunityIcons.phone_check,
-                  ),
-                  SizedBox(height: 12),
-                  _buildStatusCard(
-                    'KYC Verification',
-                    controller.isKycVerified ? 'Verified' : 'Pending',
-                    controller.isKycVerified ? Colors.green : Colors.red,
-                    MaterialCommunityIcons.account_check,
-                  ),
-                  
-                  SizedBox(height: 30),
-                  
-                  // Profile Options
-                  Text(
-                    'Account Settings',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  
-                  _buildProfileOption(
-                    'Personal Information',
-                    'Update your personal details',
-                    MaterialCommunityIcons.account_edit,
-                    controller.editProfile,
-                  ),
-                  _buildProfileOption(
-                    'Change Password',
-                    'Update your account password',
-                    MaterialCommunityIcons.lock_reset,
-                    controller.changePassword,
-                  ),
-                  _buildProfileOption(
-                    'Two-Factor Authentication',
-                    'Secure your account with 2FA',
-                    MaterialCommunityIcons.shield_check,
-                    controller.enableTwoFactor,
-                  ),
-                  _buildProfileOption(
-                    'Contact Support',
-                    'Get help from our support team',
-                    MaterialCommunityIcons.help_circle,
-                    controller.contactSupport,
-                  ),
-                  
-                  SizedBox(height: 30),
-                  
-                  // Logout Button
-                  Container(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.dialog(
-                          AlertDialog(
-                            backgroundColor: Color(0xFF2A2A2A),
-                            title: Text(
-                              'Logout',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            content: Text(
-                              'Are you sure you want to logout?',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Get.back(),
-                                child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Get.back();
-                                  controller.logout();
-                                },
-                                child: Text('Logout', style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ],
+        SizedBox(height: 16),
+        
+        _buildEnhancedStatusCard(
+          'Email Verification',
+          controller.isEmailVerified.value ? 'Verified' : 'Not Verified',
+          controller.isEmailVerified.value ? Colors.green : Colors.orange,
+          MaterialCommunityIcons.email_check,
         ),
-      ),
+        SizedBox(height: 12),
+        _buildEnhancedStatusCard(
+          'Phone Verification',
+          controller.isPhoneVerified.value ? 'Verified' : 'Not Verified',
+          controller.isPhoneVerified.value ? Colors.green : Colors.orange,
+          MaterialCommunityIcons.phone_check,
+        ),
+        SizedBox(height: 12),
+        _buildEnhancedStatusCard(
+          'KYC Verification',
+          controller.isKycVerified.value ? 'Verified' : 'Pending',
+          controller.isKycVerified.value ? Colors.green : Colors.red,
+          MaterialCommunityIcons.account_check,
+        ),
+      ],
+    ));
+  }
+  
+  Widget _buildAccountSettingsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Account Settings',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: 16),
+        
+        _buildEnhancedProfileOption(
+          'Change Password',
+          'Update your account password',
+          MaterialCommunityIcons.lock_reset,
+          controller.changePassword,
+        ),
+        _buildEnhancedProfileOption(
+          'Two-Factor Authentication',
+          'Secure your account with 2FA',
+          MaterialCommunityIcons.shield_check,
+          controller.enableTwoFactor,
+        ),
+        _buildEnhancedProfileOption(
+          'Contact Support',
+          'Get help from our support team',
+          MaterialCommunityIcons.help_circle,
+          controller.contactSupport,
+        ),
+      ],
     );
   }
   
-  Widget _buildStatusCard(String title, String status, Color statusColor, IconData icon) {
+  Widget _buildEnhancedStatusCard(String title, String status, Color statusColor, IconData icon) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2A2A2A),
+            Color(0xFF1F1F1F),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: statusColor.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
+              gradient: LinearGradient(
+                colors: [statusColor.withOpacity(0.3), statusColor.withOpacity(0.1)],
+              ),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
               color: statusColor,
-              size: 20,
+              size: 24,
             ),
           ),
           SizedBox(width: 16),
@@ -300,10 +600,10 @@ class ProfileScreen extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 6),
                 Text(
                   status,
                   style: TextStyle(
@@ -320,29 +620,49 @@ class ProfileScreen extends StatelessWidget {
     );
   }
   
-  Widget _buildProfileOption(String title, String subtitle, IconData icon, VoidCallback onTap) {
+  Widget _buildEnhancedProfileOption(String title, String subtitle, IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: EdgeInsets.only(bottom: 12),
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Color(0xFF2A2A2A),
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF2A2A2A),
+              Color(0xFF1F1F1F),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.green.withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
+                gradient: LinearGradient(
+                  colors: [Colors.green.withOpacity(0.3), Colors.green.withOpacity(0.1)],
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 color: Colors.green,
-                size: 20,
+                size: 24,
               ),
             ),
             SizedBox(width: 16),
@@ -355,10 +675,10 @@ class ProfileScreen extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  SizedBox(height: 6),
                   Text(
                     subtitle,
                     style: TextStyle(
@@ -369,12 +689,80 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white54,
-              size: 16,
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.green,
+                size: 16,
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildLogoutButton() {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Get.dialog(
+            AlertDialog(
+              backgroundColor: Color(0xFF2A2A2A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                'Logout',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              content: Text(
+                'Are you sure you want to logout?',
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Get.back();
+                    controller.logout();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text('Logout', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red.shade600,
+          padding: EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+        ),
+        child: Text(
+          'Logout',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

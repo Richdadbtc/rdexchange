@@ -265,9 +265,7 @@ class NotificationScreen extends StatelessWidget {
         return MaterialCommunityIcons.account_check;
       case NotificationType.feature:
         return MaterialCommunityIcons.star;
-      default:
-        return MaterialCommunityIcons.bell;
-    }
+      }
   }
 }
 

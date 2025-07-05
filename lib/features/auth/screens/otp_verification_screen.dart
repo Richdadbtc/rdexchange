@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 
 class OtpVerificationController extends GetxController {
   var otpCode = ''.obs;

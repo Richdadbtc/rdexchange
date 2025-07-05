@@ -5,6 +5,7 @@ abstract class Routes {
   static const ONBOARDING = '/onboarding';
   static const LOGIN = '/login';
   static const REGISTER = '/register';
+  static const RESET_PASSWORD = '/reset-password';
   static const OTP_VERIFICATION = '/otp-verification';
   static const ACCOUNT_SUCCESS = '/account-success';
   static const HOME = '/home';
@@ -14,4 +15,5 @@ abstract class Routes {
   static const BUY = '/buy';
   static const SELL = '/sell';
   static const WALLET = '/wallet';
+  static const KYC = '/kyc';
 }

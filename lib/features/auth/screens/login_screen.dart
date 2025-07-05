@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:rdexchange/routes/app_pages.dart';
 
 class LoginController extends GetxController {
   var email = ''.obs;
@@ -134,8 +134,7 @@ class LoginScreen extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                   onPressed: () {
-                    // Handle forgot password
-                    Get.snackbar('Info', 'Forgot password feature coming soon');
+                    Get.toNamed(Routes.RESET_PASSWORD);
                   },
                   child: Text(
                     'Forgot password?',

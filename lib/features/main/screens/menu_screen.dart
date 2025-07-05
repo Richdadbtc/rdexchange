@@ -329,6 +329,12 @@ class MenuScreen extends StatelessWidget {
                   onTap: () => Get.toNamed('/profile'),
                 ),
                 _buildMenuItem(
+                  icon: MaterialCommunityIcons.account_check,
+                  title: 'KYC Verification',
+                  subtitle: 'Verify your identity with NIN or BVN',
+                  onTap: () => Get.toNamed('/kyc'),
+                ),
+                _buildMenuItem(
                   icon: Ionicons.shield_checkmark,
                   title: 'Security',
                   subtitle: 'Two-factor authentication',

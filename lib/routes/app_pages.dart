@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:rdexchange/features/auth/screens/reset_password_screen.dart';
 import '../features/splash/screens/splash_screen.dart';
 import '../features/onboarding/screens/onboarding_screen.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -12,6 +13,7 @@ import '../features/rewards/screens/rewards_screen.dart';
 import '../features/trade/screens/buy_screen.dart';
 import '../features/trade/screens/sell_screen.dart';
 import '../features/wallet/screens/wallet_screen.dart';
+import '../features/kyc/screens/kyc_screen.dart';
 
 part 'app_routes.dart';
 
@@ -34,6 +36,10 @@ class AppPages {
     GetPage(
       name: Routes.REGISTER,
       page: () => RegisterScreen(),
+    ),
+    GetPage(
+      name: Routes.RESET_PASSWORD,
+      page: () => ResetPasswordScreen(),
     ),
     GetPage(
       name: Routes.OTP_VERIFICATION,
@@ -70,6 +76,10 @@ class AppPages {
     GetPage(
       name: Routes.WALLET,
       page: () => WalletScreen(),
+    ),
+    GetPage(
+      name: Routes.KYC,
+      page: () => KycScreen(),
     ),
   ];
 }
