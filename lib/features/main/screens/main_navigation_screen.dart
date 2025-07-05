@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import '../../../features/home/screens/home_screen.dart';
 import 'menu_screen.dart';
+import 'whatsapp_screen.dart';
 
 class MainNavigationController extends GetxController {
   var selectedIndex = 0.obs;
@@ -76,7 +77,7 @@ class MainNavigationScreen extends StatelessWidget {
       case 1:
         return MenuScreen();
       case 2:
-        return _buildWhatsAppTab();
+        return WhatsAppScreen();
       default:
         return HomeTabScreen();
     }
@@ -102,54 +103,6 @@ class MainNavigationScreen extends StatelessWidget {
         icon,
         color: iconColor,
         size: 28,
-      ),
-    );
-  }
-  
-  Widget _buildWhatsAppTab() {
-    return Scaffold(
-      backgroundColor: Color(0xFF1A1A1A),
-      appBar: AppBar(
-        backgroundColor: Color(0xFF1A1A1A),
-        elevation: 0,
-        title: Text(
-          'Support',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              MaterialCommunityIcons.whatsapp,
-              size: 80,
-              color: Colors.green,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'WhatsApp Support',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Contact us on WhatsApp for support',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

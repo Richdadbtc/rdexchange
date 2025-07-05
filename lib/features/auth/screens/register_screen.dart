@@ -78,29 +78,6 @@ class RegisterScreen extends StatelessWidget {
                       width: 140,
                       fit: BoxFit.contain,
                     ),
-                    // Fallback text version if logo not available
-                    // RichText(
-                    //   text: TextSpan(
-                    //     children: [
-                    //       TextSpan(
-                    //         text: 'RD',
-                    //         style: TextStyle(
-                    //           fontSize: 32,
-                    //           fontWeight: FontWeight.bold,
-                    //           color: Colors.white,
-                    //         ),
-                    //       ),
-                    //       TextSpan(
-                    //         text: 'X',
-                    //         style: TextStyle(
-                    //           fontSize: 32,
-                    //           fontWeight: FontWeight.bold,
-                    //           color: Colors.purple,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
                     SizedBox(height: 20),
                   ],
                 ),
