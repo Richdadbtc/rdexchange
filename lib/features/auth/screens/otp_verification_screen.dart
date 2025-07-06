@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../controllers/auth_controller.dart';
 
 class OtpVerificationController extends GetxController {
+  final AuthController authController = Get.find<AuthController>();
+  
   var otpCode = ''.obs;
   var isLoading = false.obs;
   var resendTimer = 60.obs;
@@ -32,7 +35,7 @@ class OtpVerificationController extends GetxController {
     });
   }
   
-  void verifyOtp() {
+  Future<void> verifyOtp() async {
     if (otpCode.value.length != 6) {
       Get.snackbar('Error', 'Please enter a valid 6-digit OTP', 
           snackPosition: SnackPosition.BOTTOM);
@@ -41,21 +44,22 @@ class OtpVerificationController extends GetxController {
     
     isLoading.value = true;
     
-    // Simulate API call
-    Future.delayed(Duration(seconds: 2), () {
-      isLoading.value = false;
-      // For demo purposes, accept any 6-digit code
-      if (otpCode.value.length == 6) {
+    try {
+      // Use the OTP code as verification token
+      final success = await authController.verifyEmail(otpCode.value);
+      
+      if (success) {
         Get.offNamed('/account-success');
-      } else {
-        Get.snackbar('Error', 'Invalid OTP code', 
-            snackPosition: SnackPosition.BOTTOM);
       }
-    });
+    } finally {
+      isLoading.value = false;
+    }
   }
   
-  void resendOtp() {
+  Future<void> resendOtp() async {
     if (canResend.value) {
+      // Trigger password reset to send new OTP
+      await authController.resetPassword(email);
       Get.snackbar('Success', 'OTP sent successfully', 
           snackPosition: SnackPosition.BOTTOM);
       startResendTimer();
@@ -101,49 +105,35 @@ class OtpVerificationScreen extends StatelessWidget {
                       width: 120,
                       fit: BoxFit.contain,
                     ),
-                    // Fallback text version if logo not available
-                    // RichText(
-                    //   text: TextSpan(
-                    //     children: [
-                    //       TextSpan(
-                    //         text: 'RD',
-                    //         style: TextStyle(
-                    //           fontSize: 32,
-                    //           fontWeight: FontWeight.bold,
-                    //           color: Colors.white,
-                    //         ),
-                    //       ),
-                    //       TextSpan(
-                    //         text: 'X',
-                    //         style: TextStyle(
-                    //           fontSize: 32,
-                    //           fontWeight: FontWeight.bold,
-                    //           color: Colors.purple,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
-                    SizedBox(height: 40),
+                    SizedBox(height: 20),
                   ],
                 ),
               ),
               // OTP Verification Title
               Text(
-                'OTP Verification',
+                'Verify Your Email',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
-                textAlign: TextAlign.center,
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 12),
               Text(
-                'Enter the verification code\nsent to your email',
+                'We sent a verification code to',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[400],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                email,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.green,
+                  fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -155,30 +145,24 @@ class OtpVerificationScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: TextField(
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    letterSpacing: 4,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 8),
                   decoration: InputDecoration(
-                    hintText: 'Enter 6-digit code',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    hintText: '000000',
+                    hintStyle: TextStyle(color: Colors.grey[400], letterSpacing: 8),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    counterText: '',
                   ),
+                  onChanged: (value) => controller.otpCode.value = value,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   maxLength: 6,
-                  onChanged: (value) => controller.otpCode.value = value,
                 ),
               ),
               SizedBox(height: 30),
               // Verify Button
-              Obx(() => SizedBox(
+              SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: Obx(() => ElevatedButton(
                   onPressed: controller.isLoading.value ? null : controller.verifyOtp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
@@ -197,15 +181,15 @@ class OtpVerificationScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                ),
-              )),
-              SizedBox(height: 40),
-              // Resend Code
+                )),
+              ),
+              SizedBox(height: 30),
+              // Resend OTP
               Obx(() => Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Didn't receive a code? ",
+                    'Didn\'t receive the code? ',
                     style: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 14,
@@ -218,9 +202,7 @@ class OtpVerificationScreen extends StatelessWidget {
                           ? 'Resend'
                           : 'Resend in ${controller.resendTimer.value}s',
                       style: TextStyle(
-                        color: controller.canResend.value 
-                            ? Colors.green
-                            : Colors.grey,
+                        color: controller.canResend.value ? Colors.green : Colors.grey[600],
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../controllers/auth_controller.dart';
 
 class RegisterController extends GetxController {
+  final AuthController authController = Get.find<AuthController>();
+  
   var name = ''.obs;
   var email = ''.obs;
   var password = ''.obs;
@@ -9,6 +12,9 @@ class RegisterController extends GetxController {
   var isPasswordVisible = false.obs;
   var isConfirmPasswordVisible = false.obs;
   var agreeToTerms = false.obs;
+
+  // Add isLoading getter that references authController
+  bool get isLoading => authController.isLoading.value;
 
   void togglePasswordVisibility() {
     isPasswordVisible.value = !isPasswordVisible.value;
@@ -22,7 +28,7 @@ class RegisterController extends GetxController {
     agreeToTerms.value = !agreeToTerms.value;
   }
 
-  void register() {
+  Future<void> register() async {
     if (name.value.isEmpty || email.value.isEmpty || password.value.isEmpty || confirmPassword.value.isEmpty) {
       Get.snackbar('Error', 'Please fill all fields', snackPosition: SnackPosition.BOTTOM);
       return;
@@ -36,8 +42,16 @@ class RegisterController extends GetxController {
       return;
     }
     
-    // Navigate to OTP verification with email as argument
-    Get.toNamed('/otp-verification', arguments: email.value);
+    final success = await authController.register(
+      name: name.value,
+      email: email.value,
+      password: password.value,
+    );
+    
+    if (success) {
+      // Navigate to OTP verification or home based on email verification requirement
+      Get.toNamed('/otp-verification', arguments: email.value);
+    }
   }
 }
 

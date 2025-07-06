@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'auth_controller.dart';
 
 class ResetPasswordController extends GetxController {
+  final AuthController authController = Get.find<AuthController>();
+  
   var email = ''.obs;
   var isLoading = false.obs;
   var isEmailSent = false.obs;
 
-  void resetPassword() {
+  Future<void> resetPassword() async {
     if (email.value.isEmpty) {
       Get.snackbar(
         'Error', 
@@ -31,24 +34,20 @@ class ResetPasswordController extends GetxController {
 
     isLoading.value = true;
     
-    // Simulate API call - replace with actual reset password API
-    Future.delayed(Duration(seconds: 2), () {
+    try {
+      final success = await authController.resetPassword(email.value);
+      
+      if (success) {
+        isEmailSent.value = true;
+        
+        // Navigate back to login after showing success
+        Future.delayed(Duration(seconds: 2), () {
+          Get.back();
+        });
+      }
+    } finally {
       isLoading.value = false;
-      isEmailSent.value = true;
-      
-      Get.snackbar(
-        'Success', 
-        'Password reset link sent to your email',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.8),
-        colorText: Colors.white,
-      );
-      
-      // Navigate back to login after showing success
-      Future.delayed(Duration(seconds: 2), () {
-        Get.back();
-      });
-    });
+    }
   }
 
   void goBackToLogin() {

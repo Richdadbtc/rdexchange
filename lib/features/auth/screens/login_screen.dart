@@ -1,26 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rdexchange/routes/app_pages.dart';
+import '../controllers/auth_controller.dart';
 
 class LoginController extends GetxController {
+  final AuthController authController = Get.find<AuthController>();
+  
   var email = ''.obs;
   var password = ''.obs;
   var isPasswordVisible = false.obs;
+
+  // Add isLoading getter that references authController
+  bool get isLoading => authController.isLoading.value;
 
   void togglePasswordVisibility() {
     isPasswordVisible.value = !isPasswordVisible.value;
   }
 
-  void login() {
+  Future<void> login() async {
     if (email.value.isEmpty || password.value.isEmpty) {
       Get.snackbar('Error', 'Please enter email and password', snackPosition: SnackPosition.BOTTOM);
       return;
     }
-    // Add authentication logic here
-    Get.snackbar('Success', 'Logged in successfully', snackPosition: SnackPosition.BOTTOM);
     
-    // Navigate to home screen
-    Get.offAllNamed('/home');
+    final success = await authController.login(
+      email: email.value,
+      password: password.value,
+    );
+    
+    if (success) {
+      // Navigate to home screen
+      Get.offAllNamed('/home');
+    }
   }
 }
 

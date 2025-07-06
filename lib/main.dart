@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'core/theme/app_theme.dart';
+import 'features/auth/controllers/auth_controller.dart';
 import 'routes/app_pages.dart';
 
 void main() {
-  runApp(const RDExchangeApp());
+  runApp(MyApp());
 }
 
-class RDExchangeApp extends StatelessWidget {
-  const RDExchangeApp({Key? key}) : super(key: key);
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'RD Exchange',
-      theme: AppTheme.darkTheme,
-      initialRoute: AppPages.INITIAL, // Use uppercase INITIAL
+      title: 'RDX Exchange',
+      initialRoute: '/splash',
       getPages: AppPages.routes,
+      initialBinding: BindingsBuilder(() {
+        Get.put(AuthController(), permanent: true);
+      }),
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
     );
   }
 }
