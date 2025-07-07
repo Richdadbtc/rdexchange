@@ -49,7 +49,7 @@ class RegisterController extends GetxController {
     );
     
     if (success) {
-      // Navigate to OTP verification or home based on email verification requirement
+      // Navigate to OTP verification with email
       Get.toNamed('/otp-verification', arguments: email.value);
     }
   }
@@ -214,6 +214,7 @@ class RegisterScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Obx(() => TextField(
+                  enabled: !controller.isLoading, // Add this line
                   style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Confirm your password',
@@ -275,8 +276,8 @@ class RegisterScreen extends StatelessWidget {
               // Register Button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: controller.register,
+                child: Obx(() => ElevatedButton(
+                  onPressed: controller.isLoading ? null : controller.register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     padding: EdgeInsets.symmetric(vertical: 16),
@@ -284,15 +285,20 @@ class RegisterScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text(
-                    'REGISTER',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                  child: controller.isLoading
+                      ? CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        )
+                      : Text(
+                          'REGISTER',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                )),
               ),
               SizedBox(height: 30),
               // Login Link

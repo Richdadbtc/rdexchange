@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controllers/auth_controller.dart';
+import 'package:rdexchange/features/auth/controllers/auth_controller.dart';
+
 
 class OtpVerificationController extends GetxController {
   final AuthController authController = Get.find<AuthController>();
@@ -45,7 +46,6 @@ class OtpVerificationController extends GetxController {
     isLoading.value = true;
     
     try {
-      // Use the OTP code as verification token
       final success = await authController.verifyEmail(otpCode.value);
       
       if (success) {
@@ -58,11 +58,10 @@ class OtpVerificationController extends GetxController {
   
   Future<void> resendOtp() async {
     if (canResend.value) {
-      // Trigger password reset to send new OTP
-      await authController.resetPassword(email);
-      Get.snackbar('Success', 'OTP sent successfully', 
-          snackPosition: SnackPosition.BOTTOM);
-      startResendTimer();
+      final success = await authController.resendOTP(email);
+      if (success) {
+        startResendTimer();
+      }
     }
   }
 }

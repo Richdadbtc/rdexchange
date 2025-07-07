@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3001;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: ['http://localhost:3000', 'http://192.168.182.33:5000', 'http://192.168.182.33:*'], // Add your IPs
   credentials: true
 }));
 
@@ -56,6 +56,42 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Add this before the error handling middleware (around line 50)
+
+// Development only - Clear database endpoint
+if (process.env.NODE_ENV === 'development') {
+  app.delete('/api/dev/clear-database', async (req, res) => {
+    try {
+      const User = require('./models/User');
+      const Wallet = require('./models/Wallet');
+      const Transaction = require('./models/Transaction');
+      const Notification = require('./models/Notification');
+      const Order = require('./models/Order');
+      const Reward = require('./models/Reward');
+
+      // Clear all collections
+      await Promise.all([
+        User.deleteMany({}),
+        Wallet.deleteMany({}),
+        Transaction.deleteMany({}),
+        Notification.deleteMany({}),
+        Order.deleteMany({}),
+        Reward.deleteMany({})  
+      ]);
+
+      res.json({ 
+        success: true, 
+        message: 'Database cleared successfully' 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error clearing database', 
+        error: error.message 
+      });
+    }
+  });
+}
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

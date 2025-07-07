@@ -42,8 +42,7 @@ class ApiService {
   
   // Handle API response
   static Map<String, dynamic> handleResponse(http.Response response) {
-    final data = json.decode(response.body);
-    
+    final data = json.decode(response.body);    
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return data;
     } else {
@@ -60,7 +59,8 @@ class ApiService {
     // Split the name into firstName and lastName
     final nameParts = name.trim().split(' ');
     final firstName = nameParts.first;
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    // If no last name provided, use a default or prompt user
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'User';
     
     final response = await http.post(
       Uri.parse('$baseUrl/auth/register'),
@@ -89,6 +89,15 @@ class ApiService {
       Uri.parse('$baseUrl/auth/verify-email'),
       headers: await getHeaders(includeAuth: false),
       body: json.encode({'token': token}),
+    );
+    return handleResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> resendOTP(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/resend-otp'),
+      headers: await getHeaders(includeAuth: false),
+      body: json.encode({'email': email}),
     );
     return handleResponse(response);
   }

@@ -55,4 +55,9 @@ class AuthRepository {
   Future<void> logout() async {
     await AuthService.logout();
   }
+  
+  // Resend OTP
+  Future<AuthResponse> resendOTP(String email) async {
+    return await AuthService.resendOTP(email);
+  }
 }

@@ -10,6 +10,7 @@ class AuthController extends GetxController {
   var isLoading = false.obs;
   var currentUser = Rxn<User>();
   var isLoggedIn = false.obs;
+  var errorMessage = ''.obs;
   
   @override
   void onInit() {
@@ -17,10 +18,42 @@ class AuthController extends GetxController {
     checkAuthStatus();
   }
   
+  // Clear error message
+  void clearError() {
+    errorMessage.value = '';
+  }
+  
+  // Show error snackbar
+  void _showError(String message) {
+    errorMessage.value = message;
+    Get.snackbar(
+      'Error',
+      message,
+      backgroundColor: Colors.red.withOpacity(0.8),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: Duration(seconds: 4),
+    );
+  }
+  
+  // Show success snackbar
+  void _showSuccess(String message) {
+    Get.snackbar(
+      'Success',
+      message,
+      backgroundColor: Colors.green.withOpacity(0.8),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: Duration(seconds: 3),
+    );
+  }
+  
   // Check authentication status
   Future<void> checkAuthStatus() async {
     try {
       isLoading.value = true;
+      clearError();
+      
       final loggedIn = await _authRepository.isLoggedIn();
       isLoggedIn.value = loggedIn;
       
@@ -35,6 +68,7 @@ class AuthController extends GetxController {
       }
     } catch (e) {
       print('Auth check error: $e');
+      isLoggedIn.value = false;
     } finally {
       isLoading.value = false;
     }
@@ -48,10 +82,27 @@ class AuthController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
+      clearError();
+      
+      // Client-side validation
+      if (name.trim().isEmpty) {
+        _showError('Name is required');
+        return false;
+      }
+      
+      if (email.trim().isEmpty) {
+        _showError('Email is required');
+        return false;
+      }
+      
+      if (password.length < 6) {
+        _showError('Password must be at least 6 characters');
+        return false;
+      }
       
       final response = await _authRepository.register(
-        name: name,
-        email: email,
+        name: name.trim(),
+        email: email.trim(),
         password: password,
       );
       
@@ -61,33 +112,14 @@ class AuthController extends GetxController {
           isLoggedIn.value = true;
         }
         
-        Get.snackbar(
-          'Success',
-          response.message,
-          backgroundColor: Colors.green.withOpacity(0.8),
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        
+        _showSuccess(response.message);
         return true;
       } else {
-        Get.snackbar(
-          'Registration Failed',
-          response.message,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        _showError(response.errorMessage);
         return false;
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Registration failed: ${e.toString()}',
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      _showError('Registration failed: ${e.toString()}');
       return false;
     } finally {
       isLoading.value = false;
@@ -223,6 +255,34 @@ class AuthController extends GetxController {
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  
+  // Resend OTP
+  Future<bool> resendOTP(String email) async {
+    try {
+      isLoading.value = true;
+      clearError();
+      
+      if (email.trim().isEmpty) {
+        _showError('Email is required');
+        return false;
+      }
+      
+      final response = await _authRepository.resendOTP(email.trim());
+      
+      if (response.success) {
+        _showSuccess(response.message);
+        return true;
+      } else {
+        _showError(response.errorMessage);
+        return false;
+      }
+    } catch (e) {
+      _showError('Failed to resend OTP: $e');
       return false;
     } finally {
       isLoading.value = false;

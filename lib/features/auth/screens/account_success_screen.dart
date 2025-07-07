@@ -9,7 +9,10 @@ class AccountSuccessController extends GetxController {
   
   void startTrading() {
     // Navigate to home screen
-    Get.offAllNamed('/home');
+    // Add navigation to dashboard after success
+    Future.delayed(Duration(seconds: 3), () {
+      Get.offAllNamed('/home');
+    });
   }
 }
 

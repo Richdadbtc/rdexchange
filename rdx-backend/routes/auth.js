@@ -33,6 +33,7 @@ const generateToken = (userId) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
+
     const { error } = registerSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
@@ -61,10 +62,10 @@ router.post('/register', async (req, res) => {
       phone
     });
 
-    // Generate email verification token
-    const emailToken = crypto.randomBytes(32).toString('hex');
-    user.emailVerificationToken = emailToken;
-    user.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    // Generate 6-digit OTP
+    const emailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    user.emailVerificationToken = emailOTP;
+    user.emailVerificationExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
 
     await user.save();
 
@@ -80,16 +81,20 @@ router.post('/register', async (req, res) => {
     });
     await wallet.save();
 
-    // Send verification email
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailToken}`;
+    // Send OTP email
     await sendEmail({
       to: email,
-      subject: 'Verify Your RDX Exchange Account',
+      subject: 'RDX Exchange - Email Verification Code',
       html: `
-        <h2>Welcome to RDX Exchange!</h2>
-        <p>Please click the link below to verify your email address:</p>
-        <a href="${verificationUrl}" style="background: #25D366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a>
-        <p>This link will expire in 24 hours.</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #25D366;">Welcome to RDX Exchange!</h2>
+          <p>Your email verification code is:</p>
+          <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #25D366; font-size: 32px; margin: 0; letter-spacing: 5px;">${emailOTP}</h1>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you didn't request this code, please ignore this email.</p>
+        </div>
       `
     });
 
@@ -97,7 +102,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully. Please check your email for verification.',
+      message: 'Registration successful. Please check your email for the verification code.',
       token,
       user: {
         id: user._id,
@@ -236,4 +241,58 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Resend OTP
+router.post('/resend-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already verified'
+      });
+    }
+
+    // Generate new OTP
+    const emailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    user.emailVerificationToken = emailOTP;
+    user.emailVerificationExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    // Send OTP email
+    await sendEmail({
+      to: email,
+      subject: 'RDX Exchange - New Verification Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #25D366;">New Verification Code</h2>
+          <p>Your new email verification code is:</p>
+          <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #25D366; font-size: 32px; margin: 0; letter-spacing: 5px;">${emailOTP}</h1>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+        </div>
+      `
+    });
+
+    res.json({
+      success: true,
+      message: 'New verification code sent to your email'
+    });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while resending OTP'
+    });
+  }
+});
 module.exports = router;
