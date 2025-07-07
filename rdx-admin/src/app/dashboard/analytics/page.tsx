@@ -20,9 +20,7 @@ import {
   ArrowDownTrayIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
-  UsersIcon,
-  TrendingUpIcon
-} from '@heroicons/react/24/outline'
+  UsersIcon} from '@heroicons/react/24/outline'
 
 interface AnalyticsData {
   revenue: Array<{ month: string; amount: number }>

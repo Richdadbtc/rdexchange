@@ -7,7 +7,7 @@ import {
   UsersIcon, 
   CreditCardIcon, 
   BanknotesIcon, 
-  TrendingUpIcon 
+  ArrowTrendingUpIcon 
 } from '@heroicons/react/24/outline'
 
 interface DashboardStats {
@@ -87,7 +87,7 @@ export default function Dashboard() {
         <StatsCard
           title="Trading Volume"
           value={`$${stats.totalVolume.toLocaleString()}`}
-          icon={TrendingUpIcon}
+          icon={ArrowTrendingUpIcon}
           change="+15%"
           changeType="increase"
         />
