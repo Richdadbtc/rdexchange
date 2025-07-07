@@ -10,8 +10,14 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 // Security middleware
 app.use(helmet());
+// Update the CORS configuration around line 13
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://192.168.182.33:5000', 'http://192.168.182.33:*'], // Add your IPs
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:3002', // Add admin dashboard
+    'http://192.168.182.33:5000', 
+    'http://192.168.182.33:*'
+  ],
   credentials: true
 }));
 
