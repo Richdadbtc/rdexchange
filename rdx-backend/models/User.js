@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// Add these fields to your existing User schema
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
@@ -59,7 +60,16 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   emailVerificationToken: String,
-  emailVerificationExpire: Date
+  emailVerificationExpire: Date,
+  authProvider: {
+    type: String,
+    enum: ['email', 'google', 'facebook', 'apple'],
+    default: 'email'
+  },
+  googleId: String,
+  facebookId: String,
+  appleId: String,
+  profilePicture: String,
 }, {
   timestamps: true
 });

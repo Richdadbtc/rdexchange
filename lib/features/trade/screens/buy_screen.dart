@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:rdexchange/features/trade/screens/buy_screen.dart' as totalAmount;
+import '../../../data/services/market_service.dart';
 
 class BuyController extends GetxController {
+  final MarketService marketService = Get.find<MarketService>();
+  
   var selectedCoin = 'BTC'.obs;
   var amountController = TextEditingController();
   var selectedPaymentMethod = 'Bank'.obs;
   var isNairaInput = true.obs;
-  var currentRate = 0.0.obs;
   var totalAmount = 0.0.obs;
   var coinAmount = 0.0.obs;
-  
-  final Map<String, double> coinRates = {
-    'BTC': 800.0,
-    'USDT': 1115.0,
-    'PI': 2.8,
-  };
   
   final List<String> availableCoins = ['BTC', 'USDT', 'PI'];
   final List<String> paymentMethods = ['Bank', 'Wallet'];
@@ -23,17 +20,18 @@ class BuyController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    updateRate();
     amountController.addListener(calculateAmount);
+    
+    // Listen to market data changes
+    ever(marketService.cryptoPrices, (_) => calculateAmount());
   }
   
-  void updateRate() {
-    currentRate.value = coinRates[selectedCoin.value] ?? 0.0;
-    calculateAmount();
+  double get currentRate {
+    return marketService.getNgnPrice(selectedCoin.value);
   }
   
   void calculateAmount() {
-    if (amountController.text.isEmpty) {
+    if (amountController.text.isEmpty || currentRate <= 0) {
       totalAmount.value = 0.0;
       coinAmount.value = 0.0;
       return;
@@ -44,11 +42,11 @@ class BuyController extends GetxController {
     if (isNairaInput.value) {
       // Input is in Naira, calculate coin amount
       totalAmount.value = inputAmount;
-      coinAmount.value = inputAmount / currentRate.value;
+      coinAmount.value = marketService.calculateBuyAmount(selectedCoin.value, inputAmount);
     } else {
       // Input is in coin, calculate Naira amount
       coinAmount.value = inputAmount;
-      totalAmount.value = inputAmount * currentRate.value;
+      totalAmount.value = marketService.calculateSellAmount(selectedCoin.value, inputAmount);
     }
   }
   
@@ -60,7 +58,7 @@ class BuyController extends GetxController {
   
   void selectCoin(String coin) {
     selectedCoin.value = coin;
-    updateRate();
+    calculateAmount();
   }
   
   void selectPaymentMethod(String method) {
@@ -299,7 +297,7 @@ class BuyScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '1 ${controller.selectedCoin.value} = ₦${controller.currentRate.value.toStringAsFixed(2)}',
+                    '1 ${controller.selectedCoin.value} = ₦${controller.currentRate.toStringAsFixed(2)}',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -505,3 +503,6 @@ class BuyScreen extends StatelessWidget {
     );
   }
 }
+
+// Add this getter to the BuyController class
+double get value => totalAmount.value;

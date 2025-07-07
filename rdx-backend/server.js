@@ -6,15 +6,6 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const authRoutes = require('./routes/auth');
-const walletRoutes = require('./routes/wallet');
-// TODO: Create these route files when needed
-// const userRoutes = require('./routes/user');
-// const tradingRoutes = require('./routes/trading');
-// const cryptoRoutes = require('./routes/crypto');
-// const transactionRoutes = require('./routes/transactions');
-// const notificationRoutes = require('./routes/notifications');
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 // Security middleware
@@ -42,15 +33,12 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/wallet', walletRoutes);
-// TODO: Add these routes when the files are created
-// app.use('/api/user', userRoutes);
-// app.use('/api/trading', tradingRoutes);
-// app.use('/api/crypto', cryptoRoutes);
-// app.use('/api/transactions', transactionRoutes);
-// app.use('/api/notifications', notificationRoutes);
-
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/wallet', require('./routes/wallet'));
+app.use('/api/transactions', require('./routes/transactions'));
+app.use('/api/trading', require('./routes/trading'));
+app.use('/api/crypto', require('./routes/crypto')); // Add this line
+app.use('/api/admin', require('./routes/admin'));
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

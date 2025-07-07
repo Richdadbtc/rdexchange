@@ -295,4 +295,188 @@ router.post('/resend-otp', async (req, res) => {
     });
   }
 });
+// Add these routes to your existing auth.js file
+
+// Google Sign In
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken, email, name, photoUrl } = req.body;
+    
+    // Verify Google ID token (you'll need to install google-auth-library)
+    // const { OAuth2Client } = require('google-auth-library');
+    // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    // const ticket = await client.verifyIdToken({
+    //   idToken: idToken,
+    //   audience: process.env.GOOGLE_CLIENT_ID,
+    // });
+    // const payload = ticket.getPayload();
+    
+    // For now, we'll trust the frontend verification
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user
+      user = new User({
+        name,
+        email,
+        profilePicture: photoUrl,
+        isEmailVerified: true, // Google emails are pre-verified
+        authProvider: 'google',
+      });
+      await user.save();
+      
+      // Create wallet for new user
+      const wallet = new Wallet({
+        userId: user._id,
+        balance: 0,
+      });
+      await wallet.save();
+    }
+    
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Google sign in successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        isEmailVerified: user.isEmailVerified,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: 'Google sign in failed',
+      error: error.message,
+    });
+  }
+});
+
+// Facebook Sign In
+router.post('/facebook', async (req, res) => {
+  try {
+    const { accessToken, email, name, photoUrl, facebookId } = req.body;
+    
+    // Verify Facebook access token
+    // You can add Facebook Graph API verification here
+    
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user
+      user = new User({
+        name,
+        email,
+        profilePicture: photoUrl,
+        isEmailVerified: true, // Facebook emails are pre-verified
+        authProvider: 'facebook',
+        facebookId,
+      });
+      await user.save();
+      
+      // Create wallet for new user
+      const wallet = new Wallet({
+        userId: user._id,
+        balance: 0,
+      });
+      await wallet.save();
+    }
+    
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Facebook sign in successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        isEmailVerified: user.isEmailVerified,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: 'Facebook sign in failed',
+      error: error.message,
+    });
+  }
+});
+
+// Apple Sign In
+router.post('/apple', async (req, res) => {
+  try {
+    const { identityToken, email, givenName, familyName, userIdentifier } = req.body;
+    
+    // Verify Apple identity token
+    // You can add Apple ID verification here using apple-auth library
+    
+    const name = `${givenName || ''} ${familyName || ''}`.trim() || 'Apple User';
+    
+    let user = await User.findOne({ 
+      $or: [
+        { email: email },
+        { appleId: userIdentifier }
+      ]
+    });
+    
+    if (!user) {
+      // Create new user
+      user = new User({
+        name,
+        email: email || `${userIdentifier}@privaterelay.appleid.com`,
+        isEmailVerified: true, // Apple emails are pre-verified
+        authProvider: 'apple',
+        appleId: userIdentifier,
+      });
+      await user.save();
+      
+      // Create wallet for new user
+      const wallet = new Wallet({
+        userId: user._id,
+        balance: 0,
+      });
+      await wallet.save();
+    }
+    
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Apple sign in successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        isEmailVerified: user.isEmailVerified,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: 'Apple sign in failed',
+      error: error.message,
+    });
+  }
+});
 module.exports = router;

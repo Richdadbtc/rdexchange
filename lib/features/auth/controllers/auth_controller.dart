@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/social_auth_service.dart'; // Add this import
 
 class AuthController extends GetxController {
   final AuthRepository _authRepository = AuthRepository();
+  final SocialAuthService _socialAuthService = SocialAuthService();
   
   // Observable variables
   var isLoading = false.obs;
@@ -314,6 +316,94 @@ class AuthController extends GetxController {
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
+    }
+  }
+
+  // Social Authentication Methods
+  Future<bool> signInWithGoogle() async {
+    try {
+      isLoading.value = true;
+      final response = await _socialAuthService.signInWithGoogle();
+      
+      if (response.success && response.user != null && response.token != null) {
+        await _saveUserData(response.user!, response.token!);
+        Get.snackbar('Success', 'Google sign in successful!', snackPosition: SnackPosition.BOTTOM);
+        return true;
+      } else {
+        Get.snackbar('Error', response.message, snackPosition: SnackPosition.BOTTOM);
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Google sign in failed: ${e.toString()}', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<bool> signInWithFacebook() async {
+    try {
+      isLoading.value = true;
+      final response = await _socialAuthService.signInWithFacebook();
+      
+      if (response.success && response.user != null && response.token != null) {
+        await _saveUserData(response.user!, response.token!);
+        Get.snackbar('Success', 'Facebook sign in successful!', snackPosition: SnackPosition.BOTTOM);
+        return true;
+      } else {
+        Get.snackbar('Error', response.message, snackPosition: SnackPosition.BOTTOM);
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Facebook sign in failed: ${e.toString()}', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<bool> signInWithApple() async {
+    try {
+      isLoading.value = true;
+      final response = await _socialAuthService.signInWithApple();
+      
+      if (response.success && response.user != null && response.token != null) {
+        await _saveUserData(response.user!, response.token!);
+        Get.snackbar('Success', 'Apple sign in successful!', snackPosition: SnackPosition.BOTTOM);
+        return true;
+      } else {
+        Get.snackbar('Error', response.message, snackPosition: SnackPosition.BOTTOM);
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Apple sign in failed: ${e.toString()}', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  @override
+  void onClose() {
+    _socialAuthService.signOutFromSocialProviders();
+    super.onClose();
+  }
+
+  // Add this missing method
+  Future<void> _saveUserData(User user, String token) async {
+    try {
+      // Save token
+      await _authRepository.saveToken(token);
+      
+      // Update current user and login status
+      currentUser.value = user;
+      isLoggedIn.value = true;
+      
+      // Navigate to home screen
+      Get.offAllNamed('/home');
+    } catch (e) {
+      print('Error saving user data: $e');
+      throw e;
     }
   }
 }

@@ -3,18 +3,122 @@ import 'package:get/get.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 
+import '../../../data/services/user_service.dart';
+import '../../../data/services/market_service.dart';
+
 class HomeTabController extends GetxController {
-  // Add user name - you can get this from user preferences or authentication
-  String userName = 'Chris'; // Replace with actual user name from your auth system
+  final UserService userService = Get.find<UserService>();
+  final MarketService marketService = Get.find<MarketService>();
+  
+  String get userName => userService.currentUser.value?.firstName ?? 'User';
   
   String getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Good Morning, $userName';
-    } else if (hour < 17) {
-      return 'Good Afternoon, $userName';
-    } else {
-      return 'Good Evening, $userName';
+    return userService.userGreeting;
+  }
+  
+  List<Map<String, dynamic>> get availableFeatures {
+    final features = <Map<String, dynamic>>[];
+    
+    // Base features for all users
+    features.add({
+      'title': 'Portfolio',
+      'icon': Icons.pie_chart,
+      'route': '/portfolio',
+      'permission': 'view_wallet'
+    });
+    
+    // Trading features based on status and verification
+    if (userService.hasPermission('trade')) {
+      features.add({
+        'title': 'Trade',
+        'icon': Icons.trending_up,
+        'route': '/trade',
+        'permission': 'trade'
+      });
+    }
+    
+    // Premium features
+    if (userService.hasFeature('advanced_charts')) {
+      features.add({
+        'title': 'Advanced Charts',
+        'icon': Icons.analytics,
+        'route': '/advanced-charts',
+        'permission': 'advanced_trading'
+      });
+    }
+    
+    // Admin features
+    if (userService.hasFeature('admin_dashboard')) {
+      features.add({
+        'title': 'Admin Panel',
+        'icon': Icons.admin_panel_settings,
+        'route': '/admin',
+        'permission': 'access_admin_panel'
+      });
+    }
+    
+    return features;
+  }
+  
+  Widget buildStatusBanner() {
+    final user = userService.currentUser.value;
+    if (user == null) return SizedBox.shrink();
+    
+    switch (user.status) {
+      case 'pending':
+        return Container(
+          margin: EdgeInsets.all(16),
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            border: Border.all(color: Colors.orange),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Complete your verification to unlock all features',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Get.toNamed('/kyc'),
+                child: Text('Verify Now'),
+              ),
+            ],
+          ),
+        );
+      case 'suspended':
+        return Container(
+          margin: EdgeInsets.all(16),
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.1),
+            border: Border.all(color: Colors.red),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.block, color: Colors.red),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Your account is suspended. Contact support for assistance.',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Get.toNamed('/support'),
+                child: Text('Contact Support'),
+              ),
+            ],
+          ),
+        );
+      default:
+        return SizedBox.shrink();
     }
   }
 }
@@ -416,23 +520,102 @@ class HomeTabScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Live Prices Header
-                                    Text(
-                                      'Live Market Prices',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    // Live Prices Header with Refresh
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Live Market Prices',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Obx(() => Row(
+                                          children: [
+                                            if (controller.marketService.lastUpdated.value != null)
+                                              Text(
+                                                'Updated ${_getTimeAgo(controller.marketService.lastUpdated.value!)}',
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            SizedBox(width: 8),
+                                            GestureDetector(
+                                              onTap: () => controller.marketService.fetchPrices(),
+                                              child: Container(
+                                                padding: EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.withOpacity(0.2),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: controller.marketService.isLoading.value
+                                                    ? SizedBox(
+                                                        width: 16,
+                                                        height: 16,
+                                                        child: CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          valueColor: AlwaysStoppedAnimation(Colors.green),
+                                                        ),
+                                                      )
+                                                    : Icon(
+                                                        Icons.refresh,
+                                                        color: Colors.green,
+                                                        size: 16,
+                                                      ),
+                                              ),
+                                            ),
+                                          ],
+                                        )),
+                                      ],
                                     ),
                                     SizedBox(height: 16),
                                     
-                                    // Crypto Prices
-                                    _buildCryptoPrice('BTC', '\$800', '+110', Colors.green),
-                                    SizedBox(height: 12),
-                                    _buildCryptoPrice('USDT', '11150', '3.800', Colors.green),
-                                    SizedBox(height: 12),
-                                    _buildCryptoPrice('PI', '2.800', '', Colors.grey),
+                                    // Error message if any
+                                    Obx(() {
+                                      if (controller.marketService.errorMessage.value.isNotEmpty) {
+                                        return Container(
+                                          margin: EdgeInsets.only(bottom: 16),
+                                          padding: EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            border: Border.all(color: Colors.red),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.error, color: Colors.red, size: 16),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  controller.marketService.errorMessage.value,
+                                                  style: TextStyle(color: Colors.red, fontSize: 12),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+                                      return SizedBox.shrink();
+                                    }),
+                                    
+                                    // Crypto Prices with Real Data
+                                    Obx(() {
+                                      final symbols = ['BTC', 'USDT', 'PI'];
+                                      return Column(
+                                        children: symbols.map((symbol) {
+                                          final priceData = controller.marketService.getPrice(symbol);
+                                          return Column(
+                                            children: [
+                                              _buildCryptoPriceWithRealData(symbol, priceData),
+                                              SizedBox(height: 12),
+                                            ],
+                                          );
+                                        }).toList(),
+                                      );
+                                    }),
                                     SizedBox(height: 30),
                                     
                                     // Action Buttons
@@ -530,7 +713,10 @@ class HomeTabScreen extends StatelessWidget {
           // Main Content
   }
   
-  Widget _buildCryptoPrice(String symbol, String price, String change, Color changeColor) {
+  Widget _buildCryptoPriceWithRealData(String symbol, CryptoPriceData? priceData) {
+    final isLoading = controller.marketService.isLoading.value;
+    final hasData = priceData != null;
+    
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -563,185 +749,122 @@ class HomeTabScreen extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Stack(
+      child: Row(
         children: [
-          // Background pattern overlay
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: RadialGradient(
-                  center: Alignment.topRight,
-                  radius: 1.5,
-                  colors: [
-                    Colors.white.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Additional subtle overlay for depth
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withOpacity(0.05),
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.1),
-                  ],
-                  stops: [0.0, 0.5, 1.0],
-                ),
-              ),
-            ),
-          ),
-          // Content
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withOpacity(0.15),
-                      Colors.white.withOpacity(0.05),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    _getCryptoImagePath(symbol),
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Fallback to text symbol if image not found
-                      return Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: symbol == 'BTC' 
-                                ? [Colors.orange.withOpacity(0.8), Colors.orange.shade700]
-                                : symbol == 'USDT' 
-                                ? [Colors.green.withOpacity(0.8), Colors.green.shade700]
-                                : [Colors.purple.withOpacity(0.8), Colors.purple.shade700],
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: (symbol == 'BTC' ? Colors.orange : 
-                                     symbol == 'USDT' ? Colors.green : Colors.purple)
-                                     .withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            symbol == 'BTC' ? '₿' : 
-                            symbol == 'USDT' ? '₮' : 'π',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
-              Text(
-                symbol,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.2),
-                      offset: Offset(0, 1),
-                      blurRadius: 2,
-                    ),
-                  ],
-                ),
-              ),
-              Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    price,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.2),
-                          offset: Offset(0, 1),
-                          blurRadius: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (change.isNotEmpty)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: changeColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: changeColor.withOpacity(0.3),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        change,
-                        style: TextStyle(
-                          color: changeColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withOpacity(0.2),
-                              offset: Offset(0, 1),
-                              blurRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+          // Crypto Icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.05),
                 ],
               ),
+            ),
+            child: Center(
+              child: Text(
+                symbol == 'BTC' ? '₿' : 
+                symbol == 'USDT' ? '₮' : 'π',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+          
+          // Symbol and Name
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  symbol,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (hasData)
+                  Text(
+                    priceData.name,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          
+          // Price and Change
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (isLoading)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.green),
+                  ),
+                )
+              else if (hasData) ...[
+                Text(
+                  priceData.formattedNgnPrice,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  priceData.formattedUsdPrice,
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+                if (priceData.change24h != 0)
+                  Container(
+                    margin: EdgeInsets.only(top: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: (priceData.isPositiveChange ? Colors.green : Colors.red).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: (priceData.isPositiveChange ? Colors.green : Colors.red).withOpacity(0.3),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      priceData.formattedChange,
+                      style: TextStyle(
+                        color: priceData.isPositiveChange ? Colors.green : Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ] else ...[
+                Text(
+                  'No data',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -749,17 +872,18 @@ class HomeTabScreen extends StatelessWidget {
     );
   }
   
-  // Helper function to get the image path for each cryptocurrency
-  String _getCryptoImagePath(String symbol) {
-    switch (symbol.toLowerCase()) {
-      case 'btc':
-        return 'assets/images/btc.png';
-      case 'usdt':
-        return 'assets/images/usdt.png';
-      case 'pi':
-        return 'assets/images/pi.png';
-      default:
-        return 'assets/images/default_crypto.png';
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) {
+      return 'just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
     }
   }
   Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {

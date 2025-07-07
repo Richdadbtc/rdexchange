@@ -24,10 +24,11 @@ class ApiService {
     await prefs.remove(tokenKey);
   }
   
-  // Get headers with auth token
+  // Get headers with optional auth
   static Future<Map<String, String>> getHeaders({bool includeAuth = true}) async {
-    Map<String, String> headers = {
+    final headers = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
     
     if (includeAuth) {
@@ -42,11 +43,47 @@ class ApiService {
   
   // Handle API response
   static Map<String, dynamic> handleResponse(http.Response response) {
-    final data = json.decode(response.body);    
-    if (response.statusCode >= 200 && response.statusCode < 300) {
+    try {
+      final data = json.decode(response.body);
       return data;
-    } else {
-      throw Exception(data['message'] ?? 'An error occurred');
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Invalid response format',
+      };
+    }
+  }
+  
+  // Generic GET request
+  static Future<Map<String, dynamic>> get(String endpoint, {bool includeAuth = true}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: await getHeaders(includeAuth: includeAuth),
+      );
+      return handleResponse(response);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+  
+  // Generic POST request
+  static Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {bool includeAuth = true}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: await getHeaders(includeAuth: includeAuth),
+        body: json.encode(data),
+      );
+      return handleResponse(response);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
     }
   }
   
@@ -74,21 +111,37 @@ class ApiService {
     );
     return handleResponse(response);
   }
-  
+
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: await getHeaders(includeAuth: false),
-      body: json.encode({'email': email, 'password': password}),
+      body: json.encode({
+        'email': email,
+        'password': password,
+      }),
     );
     return handleResponse(response);
   }
-  
+
   static Future<Map<String, dynamic>> verifyEmail(String token) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/verify-email'),
       headers: await getHeaders(includeAuth: false),
-      body: json.encode({'token': token}),
+      body: json.encode({
+        'token': token,
+      }),
+    );
+    return handleResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> resetPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/reset-password'),
+      headers: await getHeaders(includeAuth: false),
+      body: json.encode({
+        'email': email,
+      }),
     );
     return handleResponse(response);
   }
@@ -101,7 +154,7 @@ class ApiService {
     );
     return handleResponse(response);
   }
-  
+
   static Future<Map<String, dynamic>> getCurrentUser() async {
     final response = await http.get(
       Uri.parse('$baseUrl/auth/me'),
@@ -109,33 +162,7 @@ class ApiService {
     );
     return handleResponse(response);
   }
-  
-  static Future<Map<String, dynamic>> resetPassword(String email) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/reset-password'),
-      headers: await getHeaders(includeAuth: false),
-      body: json.encode({'email': email}),
-    );
-    return handleResponse(response);
-  }
-  
-  // Wallet endpoints
-  static Future<Map<String, dynamic>> getWalletBalance() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/wallet/balance'),
-      headers: await getHeaders(),
-    );
-    return handleResponse(response);
-  }
-  
-  static Future<Map<String, dynamic>> getWalletAddresses() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/wallet/addresses'),
-      headers: await getHeaders(),
-    );
-    return handleResponse(response);
-  }
-  
+
   static Future<Map<String, dynamic>> fundWallet({
     required String currency,
     required double amount,

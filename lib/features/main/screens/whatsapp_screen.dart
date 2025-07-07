@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Add this import
 import 'package:get/get.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -36,7 +37,7 @@ class WhatsAppController extends GetxController {
   }
   
   Future<void> copyWhatsAppNumber() async {
-    // You can implement clipboard functionality here
+    await Clipboard.setData(ClipboardData(text: '+$whatsappNumber'));
     Get.snackbar(
       'Copied',
       'WhatsApp number copied to clipboard',
@@ -371,42 +372,102 @@ class WhatsAppScreen extends StatelessWidget {
   }
   
   Widget _buildQuickActions() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildActionCard(
-            icon: MaterialCommunityIcons.phone,
-            title: 'Call Support',
-            subtitle: 'Direct call',
-            color: Colors.blue,
-            onTap: () {
-              // Implement phone call functionality
-              Get.snackbar(
-                'Info',
-                'Phone support coming soon',
-                backgroundColor: Colors.blue.withOpacity(0.8),
-                colorText: Colors.white,
-              );
-            },
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: MaterialCommunityIcons.phone,
+                title: 'Call Support',
+                subtitle: 'Direct call',
+                color: Colors.blue,
+                onTap: () async {
+                  final phoneUrl = 'tel:+${controller.whatsappNumber}';
+                  if (await canLaunchUrl(Uri.parse(phoneUrl))) {
+                    await launchUrl(Uri.parse(phoneUrl));
+                  } else {
+                    Get.snackbar(
+                      'Error',
+                      'Could not make phone call',
+                      backgroundColor: Colors.red.withOpacity(0.8),
+                      colorText: Colors.white,
+                    );
+                  }
+                },
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: _buildActionCard(
+                icon: MaterialCommunityIcons.email,
+                title: 'Email Us',
+                subtitle: 'Send email',
+                color: Colors.orange,
+                onTap: () async {
+                  final emailUrl = 'mailto:support@rdxexchange.com?subject=Support Request&body=${Uri.encodeComponent(controller.supportMessage)}';
+                  if (await canLaunchUrl(Uri.parse(emailUrl))) {
+                    await launchUrl(Uri.parse(emailUrl));
+                  } else {
+                    Get.snackbar(
+                      'Error',
+                      'Could not open email app',
+                      backgroundColor: Colors.red.withOpacity(0.8),
+                      colorText: Colors.white,
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
         ),
-        SizedBox(width: 16),
-        Expanded(
-          child: _buildActionCard(
-            icon: MaterialCommunityIcons.email,
-            title: 'Email Us',
-            subtitle: 'Send email',
-            color: Colors.orange,
-            onTap: () {
-              // Implement email functionality
-              Get.snackbar(
-                'Info',
-                'Email support coming soon',
-                backgroundColor: Colors.orange.withOpacity(0.8),
-                colorText: Colors.white,
-              );
-            },
-          ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: MaterialCommunityIcons.send, // Changed from telegram to send
+                title: 'Telegram',
+                subtitle: 'Chat on Telegram',
+                color: Colors.cyan,
+                onTap: () async {
+                  final telegramUrl = 'https://t.me/rdxexchange';
+                  if (await canLaunchUrl(Uri.parse(telegramUrl))) {
+                    await launchUrl(Uri.parse(telegramUrl), mode: LaunchMode.externalApplication);
+                  } else {
+                    Get.snackbar(
+                      'Info',
+                      'Telegram support coming soon',
+                      backgroundColor: Colors.cyan.withOpacity(0.8),
+                      colorText: Colors.white,
+                    );
+                  }
+                },
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: _buildActionCard(
+                icon: MaterialCommunityIcons.web,
+                title: 'Live Chat',
+                subtitle: 'Website chat',
+                color: Colors.purple,
+                onTap: () async {
+                  final websiteUrl = 'https://rdxexchange.com/support';
+                  if (await canLaunchUrl(Uri.parse(websiteUrl))) {
+                    await launchUrl(Uri.parse(websiteUrl), mode: LaunchMode.externalApplication);
+                  } else {
+                    Get.snackbar(
+                      'Info',
+                      'Live chat coming soon',
+                      backgroundColor: Colors.purple.withOpacity(0.8),
+                      colorText: Colors.white,
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
         ),
       ],
     );

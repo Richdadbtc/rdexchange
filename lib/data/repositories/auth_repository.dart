@@ -1,3 +1,5 @@
+import 'package:rdexchange/data/services/api_service.dart';
+
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
@@ -59,5 +61,10 @@ class AuthRepository {
   // Resend OTP
   Future<AuthResponse> resendOTP(String email) async {
     return await AuthService.resendOTP(email);
+  }
+
+  // Add this method if it doesn't exist
+  Future<void> saveToken(String token) async {
+    await ApiService.setToken(token);
   }
 }
