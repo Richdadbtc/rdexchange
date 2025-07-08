@@ -5,6 +5,8 @@ const Transaction = require('../models/Transaction');
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
 const Wallet = require('../models/Wallet');
+const AdminNotification = require('../models/AdminNotification');
+const CryptoRate = require('../models/CryptoRate');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
@@ -75,6 +77,8 @@ router.post('/login', async (req, res) => {
     });
   }
 });
+
+module.exports = router;
 
 // Get admin profile
 router.get('/profile', auth, adminAuth, async (req, res) => {
@@ -687,29 +691,40 @@ router.post('/orders/:orderId/cancel', auth, adminAuth, async (req, res) => {
 
 // ==================== NOTIFICATION MANAGEMENT ====================
 
-// Get all notifications
+// Get all notifications with pagination and filtering
 router.get('/notifications', auth, adminAuth, async (req, res) => {
   try {
-    // For admin notifications, we'll create a different schema
-    // For now, return mock data that matches the frontend expectations
-    const notifications = [
-      {
-        id: '1',
-        title: 'System Maintenance Scheduled',
-        message: 'We will be performing scheduled maintenance on January 20th from 2:00 AM to 4:00 AM UTC.',
-        type: 'warning',
-        status: 'sent',
-        recipients: 'all',
-        sentAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        readCount: 1250,
-        totalRecipients: 2180
-      }
-    ];
+    const { page = 1, limit = 10, search, type, status } = req.query;
+    const skip = (page - 1) * limit;
+    
+    // Build filter object
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { message: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+    
+    const notifications = await AdminNotification.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await AdminNotification.countDocuments(filter);
     
     res.json({
       success: true,
-      data: notifications
+      data: {
+        notifications,
+        pagination: {
+          current: parseInt(page),
+          pages: Math.ceil(total / limit),
+          total
+        }
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -720,17 +735,343 @@ router.get('/notifications', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Create notification
-router.post('/notifications', auth, adminAuth, async (req, res) => {
+// Get notification statistics
+router.get('/notifications/stats', auth, adminAuth, async (req, res) => {
   try {
-    const { title, message, type, recipients } = req.body;
+    const total = await AdminNotification.countDocuments();
+    const sent = await AdminNotification.countDocuments({ status: 'sent' });
+    const scheduled = await AdminNotification.countDocuments({ status: 'scheduled' });
     
-    // Here you would implement the logic to send notifications
-    // to users based on the recipients filter
+    // Calculate total delivered and opened from sent notifications
+    const sentNotifications = await AdminNotification.find({ status: 'sent' });
+    const delivered = sentNotifications.reduce((sum, notif) => sum + (notif.totalRecipients || 0), 0);
+    const opened = sentNotifications.reduce((sum, notif) => sum + (notif.readCount || 0), 0);
     
     res.json({
       success: true,
-      message: 'Notification created successfully'
+      data: {
+        total,
+        sent,
+        scheduled,
+        delivered,
+        opened,
+        openRate: delivered > 0 ? ((opened / delivered) * 100).toFixed(1) : 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Send notification
+router.post('/notifications/send', auth, adminAuth, async (req, res) => {
+  try {
+    const {
+      title,
+      message,
+      type = 'info',
+      recipients = 'all',
+      priority = 'normal',
+      actionUrl,
+      sendEmail = false,
+      scheduledAt
+    } = req.body;
+    
+    // Validation
+    if (!title || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title and message are required'
+      });
+    }
+    
+    // Determine recipient count based on filter
+    let recipientCount = 0;
+    let recipientFilter = {};
+    
+    switch (recipients) {
+      case 'all':
+        recipientCount = await User.countDocuments({ role: 'user' });
+        break;
+      case 'verified':
+        recipientFilter = { role: 'user', isVerified: true };
+        recipientCount = await User.countDocuments(recipientFilter);
+        break;
+      case 'premium':
+        recipientFilter = { role: 'user', accountType: 'premium' };
+        recipientCount = await User.countDocuments(recipientFilter);
+        break;
+      default:
+        recipientCount = await User.countDocuments({ role: 'user' });
+    }
+    
+    // Create admin notification record
+    const adminNotification = new AdminNotification({
+      title,
+      message,
+      type,
+      recipients,
+      totalRecipients: recipientCount,
+      status: scheduledAt ? 'scheduled' : 'sent',
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+      sentAt: scheduledAt ? undefined : new Date()
+    });
+    
+    await adminNotification.save();
+    
+    // If not scheduled, send notifications immediately
+    if (!scheduledAt) {
+      // Get target users
+      const targetUsers = await User.find(recipientFilter).select('_id email firstName');
+      
+      // Create individual notifications for each user
+      const userNotifications = targetUsers.map(user => ({
+        userId: user._id,
+        title,
+        message,
+        type,
+        read: false
+      }));
+      
+      if (userNotifications.length > 0) {
+        await Notification.insertMany(userNotifications);
+      }
+      
+      // If email notification is requested
+      if (sendEmail) {
+        // Here you would integrate with your email service
+        // For now, we'll just log it
+        console.log(`Email notification would be sent to ${targetUsers.length} users`);
+      }
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: scheduledAt ? 'Notification scheduled successfully' : 'Notification sent successfully',
+      data: adminNotification
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get notification details
+router.get('/notifications/:notificationId', auth, adminAuth, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    
+    const notification = await AdminNotification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Resend notification
+router.post('/notifications/:notificationId/resend', auth, adminAuth, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    
+    const adminNotification = await AdminNotification.findById(notificationId);
+    if (!adminNotification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+    
+    if (adminNotification.status !== 'sent') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only sent notifications can be resent'
+      });
+    }
+    
+    // Determine recipient filter
+    let recipientFilter = { role: 'user' };
+    switch (adminNotification.recipients) {
+      case 'verified':
+        recipientFilter.isVerified = true;
+        break;
+      case 'premium':
+        recipientFilter.accountType = 'premium';
+        break;
+    }
+    
+    // Get target users
+    const targetUsers = await User.find(recipientFilter).select('_id');
+    
+    // Create individual notifications for each user
+    const userNotifications = targetUsers.map(user => ({
+      userId: user._id,
+      title: adminNotification.title,
+      message: adminNotification.message,
+      type: adminNotification.type,
+      read: false
+    }));
+    
+    if (userNotifications.length > 0) {
+      await Notification.insertMany(userNotifications);
+    }
+    
+    // Update admin notification
+    adminNotification.sentAt = new Date();
+    adminNotification.totalRecipients = targetUsers.length;
+    await adminNotification.save();
+    
+    res.json({
+      success: true,
+      message: 'Notification resent successfully',
+      data: {
+        recipientCount: targetUsers.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Update notification
+router.put('/notifications/:notificationId', auth, adminAuth, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const { title, message, type, scheduledAt } = req.body;
+    
+    const notification = await AdminNotification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+    
+    if (notification.status === 'sent') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot update sent notifications'
+      });
+    }
+    
+    // Update fields
+    if (title) notification.title = title;
+    if (message) notification.message = message;
+    if (type) notification.type = type;
+    if (scheduledAt) {
+      notification.scheduledAt = new Date(scheduledAt);
+      notification.status = 'scheduled';
+    }
+    
+    await notification.save();
+    
+    res.json({
+      success: true,
+      message: 'Notification updated successfully',
+      data: notification
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Delete notification
+router.delete('/notifications/:notificationId', auth, adminAuth, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    
+    const notification = await AdminNotification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+    
+    if (notification.status === 'sent') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete sent notifications'
+      });
+    }
+    
+    await AdminNotification.findByIdAndDelete(notificationId);
+    
+    res.json({
+      success: true,
+      message: 'Notification deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get notification delivery stats
+router.get('/notifications/:notificationId/stats', auth, adminAuth, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    
+    const adminNotification = await AdminNotification.findById(notificationId);
+    if (!adminNotification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+    
+    // Get read count from individual user notifications
+    const readCount = await Notification.countDocuments({
+      title: adminNotification.title,
+      message: adminNotification.message,
+      read: true
+    });
+    
+    // Update admin notification with current read count
+    adminNotification.readCount = readCount;
+    await adminNotification.save();
+    
+    res.json({
+      success: true,
+      data: {
+        totalSent: adminNotification.totalRecipients,
+        delivered: adminNotification.totalRecipients, // Assuming all are delivered
+        opened: readCount,
+        openRate: adminNotification.totalRecipients > 0 
+          ? ((readCount / adminNotification.totalRecipients) * 100).toFixed(1)
+          : 0
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -888,4 +1229,250 @@ router.get('/reports/:reportId/download', auth, adminAuth, async (req, res) => {
   }
 });
 
-module.exports = router;
+// ==================== CRYPTO RATE MANAGEMENT ====================
+
+// Get all crypto rates
+router.get('/rates', auth, adminAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', status = 'all' } = req.query;
+    
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { symbol: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (status !== 'all') {
+      filter.active = status === 'active';
+    }
+    
+    const rates = await CryptoRate.find(filter)
+      .populate('createdBy', 'firstName lastName email')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .sort({ createdAt: -1 });
+    
+    const total = await CryptoRate.countDocuments(filter);
+    
+    res.json({
+      success: true,
+      data: {
+        rates,
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        total
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get rate statistics
+router.get('/rates/stats', auth, adminAuth, async (req, res) => {
+  try {
+    const totalRates = await CryptoRate.countDocuments();
+    const activeRates = await CryptoRate.countDocuments({ active: true });
+    
+    const rateStats = await CryptoRate.aggregate([
+      { $match: { active: true } },
+      {
+        $group: {
+          _id: null,
+          avgBuyRate: { $avg: '$buyRate' },
+          avgSellRate: { $avg: '$sellRate' },
+          totalVolume: { $sum: { $multiply: ['$buyRate', '$sellRate'] } }
+        }
+      }
+    ]);
+    
+    const stats = rateStats[0] || {
+      avgBuyRate: 0,
+      avgSellRate: 0,
+      totalVolume: 0
+    };
+    
+    res.json({
+      success: true,
+      data: {
+        totalRates,
+        activeRates,
+        avgBuyRate: stats.avgBuyRate,
+        avgSellRate: stats.avgSellRate,
+        avgSpread: activeRates > 0 ? ((stats.avgBuyRate - stats.avgSellRate) / stats.avgBuyRate * 100).toFixed(2) : 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Create new crypto rate
+router.post('/rates', auth, adminAuth, async (req, res) => {
+  try {
+    const { name, symbol, marketPrice, buyRate, sellRate, active = true } = req.body;
+    
+    // Validation
+    if (!name || !symbol || !marketPrice || !buyRate || !sellRate) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      });
+    }
+    
+    if (buyRate <= sellRate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Buy rate must be higher than sell rate'
+      });
+    }
+    
+    // Check if symbol already exists
+    const existingRate = await CryptoRate.findOne({ symbol: symbol.toUpperCase() });
+    if (existingRate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cryptocurrency with this symbol already exists'
+      });
+    }
+    
+    const cryptoRate = new CryptoRate({
+      name,
+      symbol: symbol.toUpperCase(),
+      marketPrice,
+      buyRate,
+      sellRate,
+      active,
+      createdBy: req.user.userId
+    });
+    
+    await cryptoRate.save();
+    await cryptoRate.populate('createdBy', 'firstName lastName email');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Cryptocurrency rate created successfully',
+      data: cryptoRate
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Update crypto rate
+router.put('/rates/:rateId', auth, adminAuth, async (req, res) => {
+  try {
+    const { rateId } = req.params;
+    const { marketPrice, buyRate, sellRate, active } = req.body;
+    
+    if (buyRate && sellRate && buyRate <= sellRate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Buy rate must be higher than sell rate'
+      });
+    }
+    
+    const updateData = {};
+    if (marketPrice !== undefined) updateData.marketPrice = marketPrice;
+    if (buyRate !== undefined) updateData.buyRate = buyRate;
+    if (sellRate !== undefined) updateData.sellRate = sellRate;
+    if (active !== undefined) updateData.active = active;
+    updateData.lastUpdated = new Date();
+    
+    const cryptoRate = await CryptoRate.findByIdAndUpdate(
+      rateId,
+      updateData,
+      { new: true }
+    ).populate('createdBy', 'firstName lastName email');
+    
+    if (!cryptoRate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Crypto rate not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Crypto rate updated successfully',
+      data: cryptoRate
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Toggle crypto rate status
+router.patch('/rates/:rateId/toggle', auth, adminAuth, async (req, res) => {
+  try {
+    const { rateId } = req.params;
+    
+    const cryptoRate = await CryptoRate.findById(rateId);
+    if (!cryptoRate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Crypto rate not found'
+      });
+    }
+    
+    cryptoRate.active = !cryptoRate.active;
+    cryptoRate.lastUpdated = new Date();
+    await cryptoRate.save();
+    await cryptoRate.populate('createdBy', 'firstName lastName email');
+    
+    res.json({
+      success: true,
+      message: `Crypto rate ${cryptoRate.active ? 'activated' : 'deactivated'} successfully`,
+      data: cryptoRate
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Delete crypto rate
+router.delete('/rates/:rateId', auth, adminAuth, async (req, res) => {
+  try {
+    const { rateId } = req.params;
+    
+    const cryptoRate = await CryptoRate.findByIdAndDelete(rateId);
+    if (!cryptoRate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Crypto rate not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Crypto rate deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});

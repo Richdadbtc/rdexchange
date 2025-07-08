@@ -1,0 +1,121 @@
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="text-light mb-1">Rate Management</h2>
+        <p class="text-muted">Manage cryptocurrency buy and sell rates</p>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCryptoModal">
+            <i class="bi bi-plus-circle me-1"></i>Add Cryptocurrency
+        </button>
+    </div>
+</div>
+
+<!-- Rate Stats -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-secondary border-secondary">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-success bg-opacity-25 p-3 rounded">
+                            <i class="bi bi-currency-bitcoin text-success fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <h6 class="text-muted mb-1">Active Pairs</h6>
+                        <h4 class="text-light mb-0" id="activePairs">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-secondary border-secondary">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-info bg-opacity-25 p-3 rounded">
+                            <i class="bi bi-graph-up-arrow text-info fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <h6 class="text-muted mb-1">Avg Buy Rate</h6>
+                        <h4 class="text-light mb-0" id="avgBuyRate">$0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-secondary border-secondary">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-warning bg-opacity-25 p-3 rounded">
+                            <i class="bi bi-graph-down-arrow text-warning fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <h6 class="text-muted mb-1">Avg Sell Rate</h6>
+                        <h4 class="text-light mb-0" id="avgSellRate">$0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-secondary border-secondary">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-danger bg-opacity-25 p-3 rounded">
+                            <i class="bi bi-percent text-danger fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <h6 class="text-muted mb-1">Avg Spread</h6>
+                        <h4 class="text-light mb-0" id="avgSpread">0%</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rates Table -->
+<div class="card bg-secondary border-secondary">
+    <div class="card-header bg-transparent border-secondary">
+        <div class="row align-items-center">
+            <div class="col">
+                <h5 class="card-title mb-0">Cryptocurrency Rates</h5>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary btn-sm" id="refreshRatesBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh Rates
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Cryptocurrency</th>
+                        <th>Symbol</th>
+                        <th>Market Price</th>
+                        <th>Buy Rate</th>
+                        <th>Sell Rate</th>
+                        <th>Spread</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="ratesTable">
+                    <!-- Rates will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,148 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-light">Transaction Management</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+                    <i class="bi bi-plus-circle me-2"></i>Add Transaction
+                </button>
+            </div>
+
+            <!-- Transaction Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title text-muted">Total Transactions</h6>
+                                    <h3 class="text-light" id="totalTransactions">0</h3>
+                                </div>
+                                <div class="text-primary">
+                                    <i class="bi bi-arrow-left-right fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title text-muted">Total Volume</h6>
+                                    <h3 class="text-light" id="totalVolume">$0</h3>
+                                </div>
+                                <div class="text-success">
+                                    <i class="bi bi-currency-dollar fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title text-muted">Pending</h6>
+                                    <h3 class="text-light" id="pendingTransactions">0</h3>
+                                </div>
+                                <div class="text-warning">
+                                    <i class="bi bi-clock fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title text-muted">Completed</h6>
+                                    <h3 class="text-light" id="completedTransactions">0</h3>
+                                </div>
+                                <div class="text-success">
+                                    <i class="bi bi-check-circle fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label text-light">Status</label>
+                            <select class="form-select bg-dark text-light border-secondary" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="completed">Completed</option>
+                                <option value="failed">Failed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-light">Type</label>
+                            <select class="form-select bg-dark text-light border-secondary" id="typeFilter">
+                                <option value="">All Types</option>
+                                <option value="deposit">Deposit</option>
+                                <option value="withdrawal">Withdrawal</option>
+                                <option value="trade">Trade</option>
+                                <option value="transfer">Transfer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-light">Date Range</label>
+                            <input type="date" class="form-control bg-dark text-light border-secondary" id="dateFrom">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-light">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <input type="date" class="form-control bg-dark text-light border-secondary" id="dateTo">
+                                <button class="btn btn-outline-primary" onclick="adminDashboard.applyTransactionFilters()">
+                                    <i class="bi bi-funnel"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="adminDashboard.clearTransactionFilters()">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="card bg-dark border-secondary">
+                <div class="card-header">
+                    <h5 class="text-light mb-0">Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Currency</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTable">
+                                <!-- Transactions will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -32,6 +33,14 @@ app.use('/api/', limiter);
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve admin dashboard static files
+app.use('/admin', express.static(path.join(__dirname, '../rdx-admin-html')));
+
+// Admin dashboard route - serve index.html for admin routes
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../rdx-admin-html/index.html'));
+});
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
