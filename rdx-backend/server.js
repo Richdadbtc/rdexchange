@@ -11,13 +11,14 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 // Security middleware
 app.use(helmet());
-// Update the CORS configuration around line 13
+// Update the CORS configuration around line 15
 app.use(cors({
   origin: [
     'http://localhost:3000', 
     'http://localhost:3002', // Add admin dashboard
     'http://192.168.182.33:5000', 
-    'http://192.168.182.33:*'
+    'http://192.168.182.33:3001',
+    /^http:\/\/192\.168\.182\.33:\d+$/,
   ],
   credentials: true
 }));
@@ -110,6 +111,9 @@ app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 RDX Exchange Backend running on port ${PORT}`);
+  console.log(`🌐 Server accessible at http://192.168.182.33:${PORT}`);
 });
+
+
