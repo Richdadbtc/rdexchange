@@ -1,25 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
+import 'package:rdexchange/data/services/wallet_service.dart';
+import 'package:rdexchange/data/models/transaction_model.dart';
 
 class WalletController extends GetxController {
-  // Observable variables
+  // Use lazy initialization instead of immediate Get.find
+  WalletService get walletService => Get.find<WalletService>();
+  
   var selectedWalletType = 'NGN'.obs;
-  var ngnBalance = 0.0.obs;  // Changed from 100000.0
-  var btcBalance = 0.0.obs;  // Changed from 0.00234
-  var usdtBalance = 0.0.obs; // Changed from 150.0
-  var piBalance = 0.0.obs;   // Changed from 1000.0
   var isLoading = false.obs;
   
-  // Wallet addresses
+  // Add transactions property
+  var transactions = <Map<String, dynamic>>[].obs;
+  
+  // Wallet addresses map
   final Map<String, String> walletAddresses = {
-    'BTC': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    'USDT': '0x742d35Cc6634C0532925a3b8D4C9db96590b5c8e',
-    'PI': 'GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A',
+    'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+    'USDT': '0x742d35Cc6634C0532925a3b8D4C9db96590b4c5d',
+    'PI': 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37',
+    'NGN': '', // NGN doesn't have a crypto address
   };
   
-  // Transaction history
-  var transactions = <Map<String, dynamic>>[].obs; // Empty list instead of demo transactions
+  // Balance getters - these return double values directly
+  double get ngnBalance => walletService.getBalance('NGN');
+  double get btcBalance => walletService.getBalance('BTC');
+  double get usdtBalance => walletService.getBalance('USDT');
+  double get piBalance => walletService.getBalance('PI');
+
+  @override
+  void onInit() {
+    super.onInit();
+    walletService.fetchWalletBalances();
+    _loadSampleTransactions(); // Load sample data for now
+  }
+
+  void _loadSampleTransactions() {
+    transactions.value = [
+      {
+        'type': 'Fund Wallet',
+        'amount': '₦50,000.00',
+        'date': '2 hours ago',
+        'status': 'Completed',
+        'icon': 'fund',
+      },
+      {
+        'type': 'Buy BTC',
+        'amount': '0.001 BTC',
+        'date': '1 day ago',
+        'status': 'Completed',
+        'icon': 'buy',
+      },
+      {
+        'type': 'Withdraw USDT',
+        'amount': '100.00 USDT',
+        'date': '3 days ago',
+        'status': 'Pending',
+        'icon': 'withdraw',
+      },
+    ];
+  }
+
+  void refreshBalance() {
+    walletService.fetchWalletBalances();
+  }
   
   void changeWalletType(String type) {
     selectedWalletType.value = type;
@@ -28,13 +72,13 @@ class WalletController extends GetxController {
   double getCurrentBalance() {
     switch (selectedWalletType.value) {
       case 'NGN':
-        return ngnBalance.value;
+        return ngnBalance;
       case 'BTC':
-        return btcBalance.value;
+        return btcBalance;
       case 'USDT':
-        return usdtBalance.value;
+        return usdtBalance;
       case 'PI':
-        return piBalance.value;
+        return piBalance;
       default:
         return 0.0;
     }
@@ -43,13 +87,13 @@ class WalletController extends GetxController {
   String getCurrentBalanceString() {
     switch (selectedWalletType.value) {
       case 'NGN':
-        return '₦${ngnBalance.value.toStringAsFixed(2)}';
+        return '₦${ngnBalance.toStringAsFixed(2)}';
       case 'BTC':
-        return '${btcBalance.value.toStringAsFixed(8)} BTC';
+        return '${btcBalance.toStringAsFixed(8)} BTC';
       case 'USDT':
-        return '${usdtBalance.value.toStringAsFixed(2)} USDT';
+        return '${usdtBalance.toStringAsFixed(2)} USDT';
       case 'PI':
-        return '${piBalance.value.toStringAsFixed(2)} PI';
+        return '${piBalance.toStringAsFixed(2)} PI';
       default:
         return '₦0.00';
     }
@@ -61,7 +105,7 @@ class WalletController extends GetxController {
   
   void copyWalletAddress() {
     final address = getWalletAddress();
-    if (address != null) {
+    if (address != null && address.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: address));
       Get.snackbar(
         'Copied!',
@@ -96,8 +140,9 @@ class WalletController extends GetxController {
     );
   }
   
-  void refreshBalance() {
+  void refreshBalanceWithLoading() {
     isLoading.value = true;
+    walletService.fetchWalletBalances();
     // Simulate API call
     Future.delayed(Duration(seconds: 2), () {
       isLoading.value = false;

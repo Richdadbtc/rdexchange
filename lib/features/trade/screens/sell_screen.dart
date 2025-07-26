@@ -2,28 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:rdexchange/data/services/market_service.dart';
+import 'package:rdexchange/features/wallet/controllers/wallet_controller.dart';
 
 class SellController extends GetxController {
+  final MarketService marketService = Get.find<MarketService>();
+  final WalletController walletController = Get.find<WalletController>();
+  
   var selectedCoin = 'BTC'.obs;
   var amountController = TextEditingController();
   var selectedPayoutAccount = 'Bank Account'.obs;
   var isCoinInput = true.obs;
-  var currentRate = 0.0.obs;
   var totalAmount = 0.0.obs;
   var coinAmount = 0.0.obs;
-  var walletAddress = ''.obs;
-  
-  final Map<String, double> coinRates = {
-    'BTC': 800.0,
-    'USDT': 1115.0,
-    'PI': 2.8,
-  };
-  
-  final Map<String, String> walletAddresses = {
-    'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-    'USDT': '0x742d35Cc6634C0532925a3b8D4C9db96590b4c5d',
-    'PI': 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37',
-  };
+
+  // Dynamic rate from MarketService
+  double get currentRate {
+    return marketService.getNgnPrice(selectedCoin.value);
+  }
+
+  // Dynamic wallet address from WalletController
+  String get walletAddress {
+    final addresses = {
+      'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+      'USDT': '0x742d35Cc6634C0532925a3b8D4C9db96590b4c5d',
+      'PI': 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37',
+    };
+    return addresses[selectedCoin.value] ?? '';
+  }
   
   final List<String> availableCoins = ['BTC', 'USDT', 'PI'];
   final List<String> payoutAccounts = ['Bank Account', 'Mobile Money', 'Wallet'];
@@ -31,18 +37,10 @@ class SellController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    updateRate();
-    updateWalletAddress();
     amountController.addListener(calculateAmount);
-  }
-  
-  void updateRate() {
-    currentRate.value = coinRates[selectedCoin.value] ?? 0.0;
-    calculateAmount();
-  }
-  
-  void updateWalletAddress() {
-    walletAddress.value = walletAddresses[selectedCoin.value] ?? '';
+    
+    // Listen to market data changes
+    ever(marketService.cryptoPrices, (_) => calculateAmount());
   }
   
   void calculateAmount() {
@@ -57,11 +55,11 @@ class SellController extends GetxController {
     if (isCoinInput.value) {
       // Input is in coin, calculate Naira amount
       coinAmount.value = inputAmount;
-      totalAmount.value = inputAmount * currentRate.value;
+      totalAmount.value = inputAmount * currentRate;
     } else {
       // Input is in Naira, calculate coin amount
       totalAmount.value = inputAmount;
-      coinAmount.value = inputAmount / currentRate.value;
+      coinAmount.value = inputAmount / currentRate;
     }
   }
   
@@ -73,8 +71,7 @@ class SellController extends GetxController {
   
   void selectCoin(String coin) {
     selectedCoin.value = coin;
-    updateRate();
-    updateWalletAddress();
+    calculateAmount();
   }
   
   void selectPayoutAccount(String account) {
@@ -82,7 +79,7 @@ class SellController extends GetxController {
   }
   
   void copyWalletAddress() {
-    Clipboard.setData(ClipboardData(text: walletAddress.value));
+    Clipboard.setData(ClipboardData(text: walletAddress));
     Get.snackbar(
       'Copied!',
       'Wallet address copied to clipboard',
@@ -369,7 +366,7 @@ class SellScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    controller.walletAddress.value,
+                    controller.walletAddress,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -403,7 +400,7 @@ class SellScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '1 ${controller.selectedCoin.value} = ₦${controller.currentRate.value.toStringAsFixed(2)}',
+                    '1 ${controller.selectedCoin.value} = ₦${controller.currentRate.toStringAsFixed(2)}',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,

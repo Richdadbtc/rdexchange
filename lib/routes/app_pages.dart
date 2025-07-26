@@ -14,6 +14,8 @@ import '../features/trade/screens/buy_screen.dart';
 import '../features/trade/screens/sell_screen.dart';
 import '../features/wallet/screens/wallet_screen.dart';
 import '../features/kyc/screens/kyc_screen.dart';
+import '../bindings/home_binding.dart';
+import '../bindings/wallet_binding.dart';
 
 part 'app_routes.dart';
 
@@ -52,6 +54,7 @@ class AppPages {
     GetPage(
       name: Routes.HOME,
       page: () => MainNavigationScreen(),
+      binding: HomeBinding(),
     ),
     GetPage(
       name: Routes.NOTIFICATIONS,
@@ -76,6 +79,7 @@ class AppPages {
     GetPage(
       name: Routes.WALLET,
       page: () => WalletScreen(),
+      binding: WalletBinding(),
     ),
     GetPage(
       name: Routes.KYC,

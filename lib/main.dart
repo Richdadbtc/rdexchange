@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'data/services/user_service.dart';
 import 'data/services/market_service.dart';
+import 'data/services/wallet_service.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'routes/app_pages.dart';
 
@@ -11,6 +12,7 @@ void main() async {
   // Initialize services
   await Get.putAsync(() => UserService().init());
   Get.put(MarketService());
+  Get.put(WalletService());
   
   runApp(MyApp());
 }

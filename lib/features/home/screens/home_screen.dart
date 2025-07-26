@@ -2,18 +2,192 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
-
 import '../../../data/services/user_service.dart';
 import '../../../data/services/market_service.dart';
+import '../../wallet/controllers/wallet_controller.dart';
 
 class HomeTabController extends GetxController {
   final UserService userService = Get.find<UserService>();
   final MarketService marketService = Get.find<MarketService>();
+  final WalletController walletController = Get.find<WalletController>();
   
   String get userName => userService.currentUser.value?.firstName ?? 'User';
   
   String getGreeting() {
     return userService.userGreeting;
+  }
+  
+  Widget _buildBalanceContainer(String currency, Color primaryColor, Color secondaryColor) {
+    return Container(
+      width: 280,
+      margin: EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            primaryColor.withOpacity(0.8),
+            primaryColor.withOpacity(0.6),
+            primaryColor.withOpacity(0.4),
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.3),
+            blurRadius: 15,
+            offset: Offset(0, 8),
+            spreadRadius: 2,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Background pattern overlay
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: RadialGradient(
+                  center: Alignment.topRight,
+                  radius: 1.5,
+                  colors: [
+                    Colors.white.withOpacity(0.1),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Content
+          Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Obx(() => Text(
+                  _getBalanceText(currency),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.3),
+                        offset: Offset(0, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                )),
+                SizedBox(height: 8),
+                Text(
+                  '$currency Balance',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.2),
+                        offset: Offset(0, 1),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  String _getBalanceText(String currency) {
+    switch (currency) {
+      case 'NGN':
+        return '₦${walletController.ngnBalance.toStringAsFixed(2)}';
+      case 'USDT':
+        return '\$${walletController.usdtBalance.toStringAsFixed(2)}';
+      case 'BTC':
+        return '${walletController.btcBalance.toStringAsFixed(8)} BTC';
+      case 'PI':
+        return '${walletController.piBalance.toStringAsFixed(2)} PI';
+      default:
+        return '₦0.00';
+    }
+  }
+  
+  Widget _buildBalanceSection() {
+    return Container(
+      height: 120,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _buildBalanceContainer('NGN', Colors.green, Colors.green),
+          _buildBalanceContainer('USDT', Colors.blue, Colors.blue),
+          _buildBalanceContainer('BTC', Colors.orange, Colors.orange),
+          _buildBalanceContainer('PI', Colors.purple, Colors.purple),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPiCoinPromotion() {
+    return Obx(() {
+      final piPrice = marketService.getNgnPrice('PI');
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'BUY PI COIN',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    piPrice > 0 ? 'AT ₦${piPrice.toStringAsFixed(3)}' : 'Price Loading...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_upward,
+              color: Colors.green,
+              size: 30,
+            ),
+          ],
+        ),
+      );
+    });
   }
   
   List<Map<String, dynamic>> get availableFeatures {
@@ -311,202 +485,8 @@ class HomeTabScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 20),
                         // Total Balance Section - Now Scrollable with Rich Texture
-                        Container(
-                          height: 120,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              // NGN Balance Container with Rich Texture
-                              Container(
-                                width: 280,
-                                margin: EdgeInsets.only(right: 16),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.green.withOpacity(0.8),
-                                      Colors.green.shade700.withOpacity(0.6),
-                                      Colors.green.shade900.withOpacity(0.4),
-                                    ],
-                                    stops: [0.0, 0.5, 1.0],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.green.withOpacity(0.3),
-                                      blurRadius: 15,
-                                      offset: Offset(0, 8),
-                                      spreadRadius: 2,
-                                    ),
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.1),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    // Background pattern overlay
-                                    Positioned.fill(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(16),
-                                          gradient: RadialGradient(
-                                            center: Alignment.topRight,
-                                            radius: 1.5,
-                                            colors: [
-                                              Colors.white.withOpacity(0.1),
-                                              Colors.transparent,
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // Content
-                                    Padding(
-                                      padding: EdgeInsets.all(20),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            '₦100,000.00',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 28,
-                                              fontWeight: FontWeight.bold,
-                                              shadows: [
-                                                Shadow(
-                                                  color: Colors.black.withOpacity(0.3),
-                                                  offset: Offset(0, 2),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'NGN Balance',
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(0.9),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              shadows: [
-                                                Shadow(
-                                                  color: Colors.black.withOpacity(0.2),
-                                                  offset: Offset(0, 1),
-                                                  blurRadius: 2,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                                // USDT Balance Container with Rich Texture
-                                Container(
-                                  width: 280,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Colors.blue.withOpacity(0.8),
-                                        Colors.blue.shade700.withOpacity(0.6),
-                                        Colors.blue.shade900.withOpacity(0.4),
-                                      ],
-                                      stops: [0.0, 0.5, 1.0],
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.blue.withOpacity(0.3),
-                                        blurRadius: 15,
-                                        offset: Offset(0, 8),
-                                        spreadRadius: 2,
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 10,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.1),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      // Background pattern overlay
-                                      Positioned.fill(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(16),
-                                            gradient: RadialGradient(
-                                              center: Alignment.topRight,
-                                              radius: 1.5,
-                                              colors: [
-                                                Colors.white.withOpacity(0.1),
-                                                Colors.transparent,
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Content
-                                      Padding(
-                                        padding: EdgeInsets.all(20),
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              '\$1,250.00',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: Colors.black.withOpacity(0.3),
-                                                    offset: Offset(0, 2),
-                                                    blurRadius: 4,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'USDT Balance',
-                                              style: TextStyle(
-                                                color: Colors.white.withOpacity(0.9),
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: Colors.black.withOpacity(0.2),
-                                                    offset: Offset(0, 1),
-                                                    blurRadius: 2,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        )],
-                                    ),
-                                )],
-                                    ),
-                        )]
-                                  ),
+                        controller._buildBalanceSection(),
+              ]),
                                   )
                                   )
                                   ],
@@ -661,46 +641,7 @@ class HomeTabScreen extends StatelessWidget {
                                     SizedBox(height: 30),
                                     
                                     // PI Coin Promotion Banner
-                                    Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Color(0xFF2A2A2A),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'BUY PI COIN',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  'AT ₦2.800',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Icon(
-                                            Icons.arrow_upward,
-                                            color: Colors.green,
-                                            size: 30,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                    controller._buildPiCoinPromotion(),
                                   ],
                                 ),
                               ),
