@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
-import '../../../data/services/social_auth_service.dart'; // Add this import
+import '../../../data/services/social_auth_service.dart'; 
 
 class AuthController extends GetxController {
   final AuthRepository _authRepository = AuthRepository();
@@ -135,45 +135,34 @@ class AuthController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
+      clearError();
+      
+      print('Attempting login for: $email'); // Add debug info
       
       final response = await _authRepository.login(
         email: email,
         password: password,
       );
       
+      print('Login response: ${response.success}, message: ${response.message}'); // Add debug info
+      
       if (response.success) {
         if (response.user != null) {
           currentUser.value = response.user;
           isLoggedIn.value = true;
+          print('User logged in successfully: ${response.user!.email}'); // Add debug info
         }
         
-        Get.snackbar(
-          'Success',
-          'Logged in successfully',
-          backgroundColor: Colors.green.withOpacity(0.8),
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        
+        _showSuccess('Logged in successfully');
         return true;
       } else {
-        Get.snackbar(
-          'Login Failed',
-          response.message,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        print('Login failed: ${response.errorMessage}'); // Add debug info
+        _showError(response.errorMessage); // Use errorMessage instead of message
         return false;
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Login failed: ${e.toString()}',
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Login exception: $e'); // Add debug info
+      _showError('Login failed: ${e.toString()}');
       return false;
     } finally {
       isLoading.value = false;

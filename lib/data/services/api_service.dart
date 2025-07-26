@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3001/api';
+  static const String baseUrl = 'http://192.168.182.33:3001/api';
   static const String tokenKey = 'auth_token';
   
   // Get stored token
@@ -44,12 +44,26 @@ class ApiService {
   // Handle API response
   static Map<String, dynamic> handleResponse(http.Response response) {
     try {
-      final data = json.decode(response.body);
-      return data;
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        // Handle HTTP error status codes
+        final data = json.decode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'HTTP ${response.statusCode}: ${response.reasonPhrase}',
+          'errors': data['errors'],
+        };
+      }
     } catch (e) {
+      print('Error parsing response: $e');
       return {
         'success': false,
-        'message': 'Invalid response format',
+        'message': 'Invalid response format: ${e.toString()}',
       };
     }
   }
@@ -113,15 +127,30 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: await getHeaders(includeAuth: false),
-      body: json.encode({
-        'email': email,
-        'password': password,
-      }),
-    );
-    return handleResponse(response);
+    try {
+      print('Making login request to: $baseUrl/auth/login'); // Add debug info
+      print('Login email: $email'); // Add debug info
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: await getHeaders(includeAuth: false),
+        body: json.encode({
+          'email': email,
+          'password': password,
+        }),
+      );
+      
+      print('Login response status: ${response.statusCode}'); // Add debug info
+      print('Login response body: ${response.body}'); // Add debug info
+      
+      return handleResponse(response);
+    } catch (e) {
+      print('Login request error: $e'); // Add debug info
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
   }
 
   static Future<Map<String, dynamic>> verifyEmail(String token) async {
