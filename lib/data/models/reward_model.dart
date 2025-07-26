@@ -50,22 +50,6 @@ class RewardModel {
   }
 }
 
-class DailyCheckIn {
-  final DateTime date;
-  final bool checked;
-  final double reward;
-  final String currency;
-  final int streak;
-
-  DailyCheckIn({
-    required this.date,
-    required this.checked,
-    required this.reward,
-    required this.currency,
-    required this.streak,
-  });
-}
-
 class ReferralData {
   final String referralCode;
   final int totalReferrals;
@@ -80,4 +64,50 @@ class ReferralData {
     required this.referredUsers,
     required this.pendingRewards,
   });
+  
+  factory ReferralData.fromJson(Map<String, dynamic> json) {
+    return ReferralData(
+      referralCode: json['referralCode'],
+      totalReferrals: json['totalReferrals'],
+      totalEarnings: json['totalEarnings'].toDouble(),
+      referredUsers: List<String>.from(json['referredUsers'] ?? []),
+      pendingRewards: json['pendingRewards'].toDouble(),
+    );
+  }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'referralCode': referralCode,
+      'totalReferrals': totalReferrals,
+      'totalEarnings': totalEarnings,
+      'referredUsers': referredUsers,
+      'pendingRewards': pendingRewards,
+    };
+  }
+}
+
+class DailyCheckIn {
+  final DateTime date;
+  final bool checked;
+  final double reward;
+  final String currency;
+  final int streak;
+
+  DailyCheckIn({
+    required this.date,
+    required this.checked,
+    required this.reward,
+    required this.currency,
+    required this.streak,
+  });
+  
+  factory DailyCheckIn.fromJson(Map<String, dynamic> json) {
+    return DailyCheckIn(
+      date: DateTime.parse(json['date']),
+      checked: json['checked'],
+      reward: json['reward'].toDouble(),
+      currency: json['currency'],
+      streak: json['streak'],
+    );
+  }
 }

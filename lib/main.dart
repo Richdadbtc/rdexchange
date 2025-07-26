@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'data/services/api_service.dart';
+import 'data/services/reward_service.dart';
 import 'data/services/user_service.dart';
 import 'data/services/market_service.dart';
 import 'data/services/wallet_service.dart';
@@ -9,7 +11,8 @@ import 'routes/app_pages.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize services
+  // Register services
+  Get.put(RewardService()); // Add this line
   await Get.putAsync(() => UserService().init());
   Get.put(MarketService());
   Get.put(WalletService());

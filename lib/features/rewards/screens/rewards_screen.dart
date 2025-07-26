@@ -27,20 +27,30 @@ class RewardsScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.white),
+            onPressed: controller.refreshData,
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildRewardsSummary(),
-            SizedBox(height: 24),
-            _buildDailyCheckIn(),
-            SizedBox(height: 24),
-            _buildReferralSection(),
-            SizedBox(height: 24),
-            _buildRewardsHistory(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: controller.refreshData,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildRewardsSummary(),
+              SizedBox(height: 24),
+              _buildDailyCheckIn(),
+              SizedBox(height: 24),
+              _buildReferralSection(),
+              SizedBox(height: 24),
+              _buildRewardsHistory(),
+            ],
+          ),
         ),
       ),
     );

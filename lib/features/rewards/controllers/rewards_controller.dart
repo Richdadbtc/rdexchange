@@ -2,8 +2,11 @@ import 'package:get/get.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import '../../../data/models/reward_model.dart';
+import '../../../data/services/reward_service.dart';
 
 class RewardsController extends GetxController {
+  final RewardService _rewardService = Get.find<RewardService>();
+  
   var rewards = <RewardModel>[].obs;
   var dailyCheckIns = <DailyCheckIn>[].obs;
   var referralData = Rx<ReferralData?>(null);
@@ -11,69 +14,83 @@ class RewardsController extends GetxController {
   var currentStreak = 0.obs;
   var canCheckInToday = true.obs;
   var isLoading = false.obs;
+  var dailyRewardConfig = <int, double>{}.obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadRewardsData();
-    checkDailyLoginStatus();
-    loadReferralData();
+    loadAllData();
+  }
+  
+  Future<void> loadAllData() async {
+    isLoading.value = true;
+    try {
+      await Future.wait([
+        loadRewardsData(),
+        loadReferralData(),
+        loadDailyCheckInStatus(),
+        loadDailyRewardConfig(),
+      ]);
+    } catch (e) {
+      _showErrorSnackbar('Failed to load data: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  void loadRewardsData() {
-    // Simulate loading rewards data
-    rewards.value = [
-      RewardModel(
-        id: '1',
-        type: 'daily_login',
-        title: 'Daily Login Bonus',
-        description: 'Login reward for day 5',
-        amount: 10.0,
-        currency: 'RDX',
-        earnedDate: DateTime.now().subtract(Duration(days: 1)),
-        claimed: true,
-      ),
-      RewardModel(
-        id: '2',
-        type: 'referral',
-        title: 'Referral Bonus',
-        description: 'Friend joined using your code',
-        amount: 50.0,
-        currency: 'USDT',
-        earnedDate: DateTime.now().subtract(Duration(days: 3)),
-        claimed: false,
-        referralCode: 'RDX123ABC',
-      ),
-      RewardModel(
-        id: '3',
-        type: 'bonus',
-        title: 'Welcome Bonus',
-        description: 'Welcome to RDX Exchange',
-        amount: 100.0,
-        currency: 'RDX',
-        earnedDate: DateTime.now().subtract(Duration(days: 7)),
-        claimed: true,
-      ),
-    ];
-    
-    calculateTotalBalance();
+  Future<void> loadRewardsData() async {
+    try {
+      rewards.value = await _rewardService.getUserRewards();
+      calculateTotalBalance();
+    } catch (e) {
+      _showErrorSnackbar('Failed to load rewards: $e');
+    }
   }
 
-  void loadReferralData() {
-    referralData.value = ReferralData(
-      referralCode: 'RDX${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-      totalReferrals: 5,
-      totalEarnings: 250.0,
-      referredUsers: ['user1@example.com', 'user2@example.com'],
-      pendingRewards: 50.0,
-    );
+  Future<void> loadReferralData() async {
+    try {
+      referralData.value = await _rewardService.getReferralData();
+    } catch (e) {
+      _showErrorSnackbar('Failed to load referral data: $e');
+    }
+  }
+  
+  Future<void> loadDailyRewardConfig() async {
+    try {
+      dailyRewardConfig.value = await _rewardService.getDailyRewardConfig();
+    } catch (e) {
+      // Use default config if API fails
+      dailyRewardConfig.value = {
+        1: 5.0, 2: 10.0, 3: 15.0, 4: 20.0,
+        5: 25.0, 6: 30.0, 7: 50.0,
+      };
+    }
   }
 
-  void checkDailyLoginStatus() {
-    // Simulate daily check-in data
+  Future<void> loadDailyCheckInStatus() async {
+    try {
+      final statusData = await _rewardService.getDailyCheckInStatus();
+      
+      currentStreak.value = statusData['currentStreak'] ?? 0;
+      canCheckInToday.value = statusData['canCheckInToday'] ?? false;
+      
+      // Build daily check-ins from API data
+      final List<dynamic> checkInsData = statusData['dailyCheckIns'] ?? [];
+      dailyCheckIns.value = checkInsData
+          .map((json) => DailyCheckIn.fromJson(json))
+          .toList();
+          
+      // If no data from API, generate default
+      if (dailyCheckIns.isEmpty) {
+        _generateDefaultCheckIns();
+      }
+    } catch (e) {
+      _generateDefaultCheckIns();
+    }
+  }
+  
+  void _generateDefaultCheckIns() {
     final today = DateTime.now();
-    final lastCheckIn = DateTime(today.year, today.month, today.day - 1);
-    
     dailyCheckIns.value = List.generate(7, (index) {
       final date = DateTime(today.year, today.month, today.day - (6 - index));
       final isToday = date.day == today.day;
@@ -82,94 +99,84 @@ class RewardsController extends GetxController {
       return DailyCheckIn(
         date: date,
         checked: isPast && !isToday,
-        reward: _getDailyReward(index + 1),
+        reward: dailyRewardConfig[index + 1] ?? 5.0,
         currency: 'RDX',
         streak: index + 1,
       );
     });
-    
-    currentStreak.value = 4; // Simulate current streak
-    canCheckInToday.value = true; // User can check in today
   }
 
   double _getDailyReward(int day) {
-    switch (day) {
-      case 1: return 5.0;
-      case 2: return 10.0;
-      case 3: return 15.0;
-      case 4: return 20.0;
-      case 5: return 25.0;
-      case 6: return 30.0;
-      case 7: return 50.0;
-      default: return 5.0;
-    }
+    return dailyRewardConfig[day] ?? 5.0;
   }
 
-  void performDailyCheckIn() {
-    if (!canCheckInToday.value) return;
+  Future<void> performDailyCheckIn() async {
+    if (!canCheckInToday.value || isLoading.value) return;
     
     isLoading.value = true;
     
-    // Simulate API call
-    Future.delayed(Duration(seconds: 2), () {
-      final today = DateTime.now();
-      final todayReward = _getDailyReward(currentStreak.value + 1);
+    try {
+      final result = await _rewardService.performDailyCheckIn();
       
-      // Add new reward
-      rewards.add(RewardModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: 'daily_login',
-        title: 'Daily Login Bonus',
-        description: 'Day ${currentStreak.value + 1} login reward',
-        amount: todayReward,
-        currency: 'RDX',
-        earnedDate: today,
-        claimed: true,
-      ));
+      // Add new reward from API response
+      final newReward = RewardModel.fromJson(result['reward']);
+      rewards.add(newReward);
       
-      // Update streak
-      currentStreak.value++;
+      // Update streak and status
+      currentStreak.value = result['newStreak'];
       canCheckInToday.value = false;
       
-      // Update daily check-ins
-      checkDailyLoginStatus();
+      // Refresh data
+      await loadDailyCheckInStatus();
       calculateTotalBalance();
-      
-      isLoading.value = false;
       
       Get.snackbar(
         'Check-in Successful!',
-        'You earned ${todayReward.toStringAsFixed(1)} RDX tokens!',
+        'You earned ${newReward.amount.toStringAsFixed(1)} ${newReward.currency}!',
         backgroundColor: Color(0xFF4CAF50),
         colorText: Colors.white,
         snackPosition: SnackPosition.TOP,
       );
-    });
+    } catch (e) {
+      _showErrorSnackbar('Check-in failed: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  void claimReward(String rewardId) {
-    final rewardIndex = rewards.indexWhere((r) => r.id == rewardId);
-    if (rewardIndex != -1 && !rewards[rewardIndex].claimed) {
-      rewards[rewardIndex] = RewardModel(
-        id: rewards[rewardIndex].id,
-        type: rewards[rewardIndex].type,
-        title: rewards[rewardIndex].title,
-        description: rewards[rewardIndex].description,
-        amount: rewards[rewardIndex].amount,
-        currency: rewards[rewardIndex].currency,
-        earnedDate: rewards[rewardIndex].earnedDate,
-        claimed: true,
-        referralCode: rewards[rewardIndex].referralCode,
-      );
+  Future<void> claimReward(String rewardId) async {
+    try {
+      final success = await _rewardService.claimReward(rewardId);
       
-      calculateTotalBalance();
-      
-      Get.snackbar(
-        'Reward Claimed!',
-        'You claimed ${rewards[rewardIndex].amount} ${rewards[rewardIndex].currency}',
-        backgroundColor: Color(0xFF4CAF50),
-        colorText: Colors.white,
-      );
+      if (success) {
+        // Update local reward status
+        final rewardIndex = rewards.indexWhere((r) => r.id == rewardId);
+        if (rewardIndex != -1) {
+          final reward = rewards[rewardIndex];
+          rewards[rewardIndex] = RewardModel(
+            id: reward.id,
+            type: reward.type,
+            title: reward.title,
+            description: reward.description,
+            amount: reward.amount,
+            currency: reward.currency,
+            earnedDate: reward.earnedDate,
+            claimed: true,
+            referralCode: reward.referralCode,
+          );
+          
+          calculateTotalBalance();
+          
+          Get.snackbar(
+            'Reward Claimed!',
+            'You claimed ${reward.amount} ${reward.currency}',
+            backgroundColor: Color(0xFF4CAF50),
+            colorText: Colors.white,
+          );
+        }
+      }
+    } catch (e) {
+      _showErrorSnackbar('Failed to claim reward: $e');
     }
   }
 
@@ -201,5 +208,19 @@ class RewardsController extends GetxController {
     totalRewardBalance.value = rewards
         .where((r) => r.claimed)
         .fold(0.0, (sum, reward) => sum + reward.amount);
+  }
+  
+  void _showErrorSnackbar(String message) {
+    Get.snackbar(
+      'Error',
+      message,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+    );
+  }
+  
+  Future<void> refreshData() async {
+    await loadAllData();
   }
 }
