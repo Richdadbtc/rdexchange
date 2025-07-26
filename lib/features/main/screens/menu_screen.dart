@@ -77,8 +77,9 @@ class MenuController extends GetxController {
           'subtitle': 'Manage your profile',
           'route': '/profile'
         },
-        if (!userService.currentUser.value!.isEmailVerified || 
-            !userService.currentUser.value!.isPhoneVerified)
+        if (userService.currentUser.value != null &&
+            (!userService.currentUser.value!.isEmailVerified ||
+             !userService.currentUser.value!.isPhoneVerified))
           {
             'icon': Icons.verified_user,
             'title': 'KYC Verification',

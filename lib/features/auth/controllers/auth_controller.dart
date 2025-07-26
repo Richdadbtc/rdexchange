@@ -150,7 +150,7 @@ class AuthController extends GetxController {
         if (response.user != null) {
           currentUser.value = response.user;
           isLoggedIn.value = true;
-          print('User logged in successfully: ${response.user!.email}'); // Add debug info
+          print('User logged in successfully: ${response.user?.email}'); // Add debug info
         }
         
         _showSuccess('Logged in successfully');

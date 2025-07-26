@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 class WalletController extends GetxController {
   // Observable variables
   var selectedWalletType = 'NGN'.obs;
-  var ngnBalance = 100000.0.obs;
-  var btcBalance = 0.00234.obs;
-  var usdtBalance = 150.0.obs;
-  var piBalance = 1000.0.obs;
+  var ngnBalance = 0.0.obs;  // Changed from 100000.0
+  var btcBalance = 0.0.obs;  // Changed from 0.00234
+  var usdtBalance = 0.0.obs; // Changed from 150.0
+  var piBalance = 0.0.obs;   // Changed from 1000.0
   var isLoading = false.obs;
   
   // Wallet addresses
@@ -19,29 +19,7 @@ class WalletController extends GetxController {
   };
   
   // Transaction history
-  var transactions = <Map<String, dynamic>>[
-    {
-      'type': 'Fund',
-      'amount': '₦50,000',
-      'date': '2024-01-15',
-      'status': 'Completed',
-      'icon': 'fund',
-    },
-    {
-      'type': 'Buy BTC',
-      'amount': '₦25,000',
-      'date': '2024-01-14',
-      'status': 'Completed',
-      'icon': 'buy',
-    },
-    {
-      'type': 'Withdraw',
-      'amount': '₦10,000',
-      'date': '2024-01-13',
-      'status': 'Pending',
-      'icon': 'withdraw',
-    },
-  ].obs;
+  var transactions = <Map<String, dynamic>>[].obs; // Empty list instead of demo transactions
   
   void changeWalletType(String type) {
     selectedWalletType.value = type;
