@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "202478075827",
+    "project_id": "rd-exchange",
+    "storage_bucket": "rd-exchange.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:202478075827:android:f3a89c8e837e2c3821d5c6",
+        "android_client_info": {
+          "package_name": "com.rdxtech.rdexchange"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDY6nxZj7Lmpu5igvJuFk0xYgmnF-dAFO0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
