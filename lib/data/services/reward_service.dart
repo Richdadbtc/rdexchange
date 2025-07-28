@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../models/reward_model.dart';
 import 'api_service.dart';
+import 'notification_service.dart';
 
 class RewardService extends GetxService {
   static RewardService get to => Get.find();
@@ -56,12 +57,22 @@ class RewardService extends GetxService {
   Future<Map<String, dynamic>> performDailyCheckIn() async {
     try {
       final response = await ApiService.post('/rewards/daily-checkin', {});
+      
       if (response['success']) {
-        return response['data'];
+        // Schedule next day reminder
+        final notificationService = NotificationService.to;
+        final tomorrow = DateTime.now().add(Duration(days: 1));
+        final reminderTime = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9, 0); // 9 AM
+        
+        await notificationService.scheduleRewardClaimReminder(reminderTime);
       }
-      throw Exception(response['message'] ?? 'Failed to perform check-in');
+      
+      return response;
     } catch (e) {
-      throw Exception('Error performing check-in: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
     }
   }
   

@@ -1,67 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
-
-class NotificationController extends GetxController {
-  var notifications = <NotificationItem>[
-    NotificationItem(
-      id: '1',
-      title: 'Welcome to RD Exchange',
-      message: 'Thank you for joining RD Exchange. Start trading now!',
-      time: '2 hours ago',
-      isRead: false,
-      type: NotificationType.welcome,
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'BTC Price Alert',
-      message: 'Bitcoin has reached \$800. Consider your trading strategy.',
-      time: '5 hours ago',
-      isRead: true,
-      type: NotificationType.priceAlert,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Account Verification',
-      message: 'Your account has been successfully verified.',
-      time: '1 day ago',
-      isRead: true,
-      type: NotificationType.account,
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'New Feature Available',
-      message: 'Check out our new PI Coin trading feature.',
-      time: '2 days ago',
-      isRead: false,
-      type: NotificationType.feature,
-    ),
-  ].obs;
-
-  void markAsRead(String id) {
-    final index = notifications.indexWhere((n) => n.id == id);
-    if (index != -1) {
-      notifications[index] = notifications[index].copyWith(isRead: true);
-      notifications.refresh();
-    }
-  }
-
-  void markAllAsRead() {
-    for (int i = 0; i < notifications.length; i++) {
-      notifications[i] = notifications[i].copyWith(isRead: true);
-    }
-    notifications.refresh();
-  }
-
-  void deleteNotification(String id) {
-    notifications.removeWhere((n) => n.id == id);
-  }
-
-  int get unreadCount => notifications.where((n) => !n.isRead).length;
-}
+import '../../../data/services/notification_service.dart';
 
 class NotificationScreen extends StatelessWidget {
-  final NotificationController controller = Get.put(NotificationController());
+  final NotificationService notificationService = Get.find<NotificationService>();
 
   @override
   Widget build(BuildContext context) {
@@ -83,9 +26,9 @@ class NotificationScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          Obx(() => controller.unreadCount > 0
+          Obx(() => notificationService.unreadCount.value > 0
               ? TextButton(
-                  onPressed: controller.markAllAsRead,
+                  onPressed: notificationService.markAllAsRead,
                   child: Text(
                     'Mark all read',
                     style: TextStyle(
@@ -98,7 +41,13 @@ class NotificationScreen extends StatelessWidget {
         ],
       ),
       body: Obx(() {
-        if (controller.notifications.isEmpty) {
+        if (notificationService.isLoading.value) {
+          return Center(
+            child: CircularProgressIndicator(color: Colors.green),
+          );
+        }
+
+        if (notificationService.notifications.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -130,25 +79,29 @@ class NotificationScreen extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          padding: EdgeInsets.all(16),
-          itemCount: controller.notifications.length,
-          itemBuilder: (context, index) {
-            final notification = controller.notifications[index];
-            return _buildNotificationItem(notification);
-          },
+        return RefreshIndicator(
+          onRefresh: notificationService.loadNotifications,
+          color: Colors.green,
+          child: ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: notificationService.notifications.length,
+            itemBuilder: (context, index) {
+              final notification = notificationService.notifications[index];
+              return _buildNotificationItem(notification);
+            },
+          ),
         );
       }),
     );
   }
 
-  Widget _buildNotificationItem(NotificationItem notification) {
+  Widget _buildNotificationItem(NotificationModel notification) {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: notification.isRead ? Color(0xFF2A2A2A) : Color(0xFF2A2A2A).withOpacity(0.8),
+        color: notification.read ? Color(0xFF2A2A2A) : Color(0xFF2A2A2A).withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
-        border: notification.isRead ? null : Border.all(color: Colors.green.withOpacity(0.3)),
+        border: notification.read ? null : Border.all(color: Colors.green.withOpacity(0.3)),
       ),
       child: ListTile(
         contentPadding: EdgeInsets.all(16),
@@ -173,11 +126,11 @@ class NotificationScreen extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
-                  fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+                  fontWeight: notification.read ? FontWeight.normal : FontWeight.bold,
                 ),
               ),
             ),
-            if (!notification.isRead)
+            if (!notification.read)
               Container(
                 width: 8,
                 height: 8,
@@ -201,7 +154,7 @@ class NotificationScreen extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              notification.time,
+              notification.timeAgo,
               style: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 12,
@@ -210,15 +163,15 @@ class NotificationScreen extends StatelessWidget {
           ],
         ),
         onTap: () {
-          if (!notification.isRead) {
-            controller.markAsRead(notification.id);
+          if (!notification.read) {
+            notificationService.markAsRead(notification.id);
           }
         },
         trailing: PopupMenuButton(
           icon: Icon(Icons.more_vert, color: Colors.grey[400]),
           color: Color(0xFF2A2A2A),
           itemBuilder: (context) => [
-            if (!notification.isRead)
+            if (!notification.read)
               PopupMenuItem(
                 value: 'read',
                 child: Text('Mark as read', style: TextStyle(color: Colors.white)),
@@ -230,9 +183,9 @@ class NotificationScreen extends StatelessWidget {
           ],
           onSelected: (value) {
             if (value == 'read') {
-              controller.markAsRead(notification.id);
+              notificationService.markAsRead(notification.id);
             } else if (value == 'delete') {
-              controller.deleteNotification(notification.id);
+              notificationService.deleteNotification(notification.id);
             }
           },
         ),
@@ -240,74 +193,45 @@ class NotificationScreen extends StatelessWidget {
     );
   }
 
-  Color _getNotificationColor(NotificationType type) {
+  Color _getNotificationColor(String type) {
     switch (type) {
-      case NotificationType.welcome:
-        return Colors.blue;
-      case NotificationType.priceAlert:
+      case 'reward':
+        return Colors.amber;
+      case 'price_alert':
         return Colors.orange;
-      case NotificationType.account:
+      case 'account':
         return Colors.green;
-      case NotificationType.feature:
+      case 'feature':
         return Colors.purple;
+      case 'success':
+        return Colors.green;
+      case 'warning':
+        return Colors.orange;
+      case 'error':
+        return Colors.red;
       default:
-        return Colors.grey;
+        return Colors.blue;
     }
   }
 
-  IconData _getNotificationIcon(NotificationType type) {
+  IconData _getNotificationIcon(String type) {
     switch (type) {
-      case NotificationType.welcome:
-        return MaterialCommunityIcons.hand_wave;
-      case NotificationType.priceAlert:
+      case 'reward':
+        return MaterialCommunityIcons.gift;
+      case 'price_alert':
         return MaterialCommunityIcons.chart_line;
-      case NotificationType.account:
+      case 'account':
         return MaterialCommunityIcons.account_check;
-      case NotificationType.feature:
+      case 'feature':
         return MaterialCommunityIcons.star;
-      }
+      case 'success':
+        return MaterialCommunityIcons.check_circle;
+      case 'warning':
+        return MaterialCommunityIcons.alert;
+      case 'error':
+        return MaterialCommunityIcons.alert_circle;
+      default:
+        return MaterialCommunityIcons.bell;
+    }
   }
-}
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final String time;
-  final bool isRead;
-  final NotificationType type;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.time,
-    required this.isRead,
-    required this.type,
-  });
-
-  NotificationItem copyWith({
-    String? id,
-    String? title,
-    String? message,
-    String? time,
-    bool? isRead,
-    NotificationType? type,
-  }) {
-    return NotificationItem(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      message: message ?? this.message,
-      time: time ?? this.time,
-      isRead: isRead ?? this.isRead,
-      type: type ?? this.type,
-    );
-  }
-}
-
-enum NotificationType {
-  welcome,
-  priceAlert,
-  account,
-  feature,
 }
